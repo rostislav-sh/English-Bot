@@ -1,11 +1,14 @@
-# Python
+# Python bytecode/cache
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution/build
 .Python
 build/
-develop-eggs/
 dist/
 downloads/
 eggs/
@@ -20,8 +23,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-pip-log.txt
-pip-delete-this-directory.txt
 
 # Virtual environments
 .venv/
@@ -31,39 +32,40 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE
+# Tooling caches
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE/editor
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-.DS_Store
 *.sublime-project
 *.sublime-workspace
-
-# Poetry
-poetry.lock
-
-# Pytest
-.pytest_cache/
-.coverage
-htmlcov/
 
 # Environment variables
 .env
 .env.local
 .env.*.local
 
-# Node/Frontend (if needed)
-node_modules/
-npm-debug.log
-yarn-error.log
-dist/
-.next/
+# Logs
+*.log
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Project specific
-*.log
+# Node (if a frontend is added later)
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Poetry
+poetry.lock
