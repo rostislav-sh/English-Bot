@@ -23,13 +23,13 @@ class Users(Base):
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
 
-    refresh_tokens: Mapped[str]
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
 
-    id = Mapped[int_pk]
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    id: Mapped[int_pk]
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), index=True)
     # Хэш refresh токена (opaque строка); используется для валидации при ротации.
     token_hash: Mapped[str] = mapped_column(String(128), unique=True)
     # Дата/время истечения refresh токена
