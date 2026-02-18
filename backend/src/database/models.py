@@ -19,7 +19,7 @@ class Users(Base):
 
     id: Mapped[int_pk]
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    password_hash: Mapped[str] # использует хеш пароля
+    password_hash: Mapped[str] = mapped_column(String(255)) # использует хеш пароля
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
 
@@ -29,7 +29,7 @@ class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
 
     id: Mapped[int_pk]
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete="CASCADE"), index=True)
     # Хэш refresh токена (opaque строка); используется для валидации при ротации.
     token_hash: Mapped[str] = mapped_column(String(128), unique=True)
     # Дата/время истечения refresh токена
