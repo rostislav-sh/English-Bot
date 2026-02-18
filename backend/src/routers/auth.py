@@ -1,3 +1,5 @@
+"""Маршруты аутентификации."""
+
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.params import Depends
 
@@ -11,10 +13,12 @@ router = APIRouter()
 
 
 async def get_uow() -> IUserUnitOfWork:
+    """Фабрика Unit of Work для Dependency Injection."""
     return UserUnitOfWork()
 
 
 async def get_user_service(uow: IUserUnitOfWork = Depends(get_uow)) -> AuthService:
+    """Фабрика сервиса аутентификации."""
     return AuthService(uow=uow)
 
 
@@ -23,6 +27,7 @@ async def register(
         data: Authentication,
         service: AuthService = Depends(get_user_service)
 ):
+    """Регистрация нового пользователя."""
     try:
         user = await service.register(email=data.email, password=data.password)
         return UserOut.model_validate(user, from_attributes=True)
