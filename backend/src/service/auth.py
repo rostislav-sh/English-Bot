@@ -7,7 +7,7 @@ from src.database.models import Users
 from src.exceptions import InvalidCredentialsError
 from src.interfaces.unitofwork import IUserUnitOfWork
 from src.auth.security import security
-from src.routers.schemas.auth import TokenPair
+from src.schemas.auth import TokenPair
 
 
 class AuthService:

@@ -6,7 +6,8 @@ from fastapi.params import Depends
 from src.database.unitofwork import UserUnitOfWork
 from src.exceptions import UserAlreadyExistsError, InvalidCredentialsError, AppError
 from src.interfaces.unitofwork import IUserUnitOfWork
-from src.routers.schemas.auth import Authentication, UserOut, TokenPair
+from src.routers.schemas.auth import Authentication, UserOut
+from src.schemas.auth import TokenPair
 from src.service.auth import AuthService
 
 router = APIRouter()
