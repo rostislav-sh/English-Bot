@@ -23,7 +23,7 @@ class TokenHelper:
         now = datetime.now()
         payload = {
             # subject (sub) — идентификатор пользователя в виде строки.
-            "sub": user_id,
+            "sub": str(user_id),
             # собственное поле type для различения типов (access/refresh).
             "type": token_type,
             # issued-at (iat) — время выпуска.
