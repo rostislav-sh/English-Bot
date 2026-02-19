@@ -44,7 +44,11 @@ async def login(
         response: Response,
         service: AuthService = Depends(get_user_service),
 ) -> TokenPair:
-    """Аутентификация пользователя. Возвращает пару токенов."""
+    """Проверяет учётные данные и возвращает пару токенов (access + refresh).
+
+    Raises:
+        HTTPException 401: Неверный email или пароль.
+    """
     try:
         access_token, refresh_token = await service.login(email=data.email, password=data.password)
     except InvalidCredentialsError as error:

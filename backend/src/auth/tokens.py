@@ -7,19 +7,22 @@ from src.config import settings
 
 
 class TokenHelper:
+    """Создание и хэширование JWT-токенов."""
+
     def hash_session_token(self, token: str) -> str:
-        """Хэширует сессионный токен через SHA-256."""
+        """Возвращает SHA-256 хэш токена для безопасного хранения в БД."""
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
     def create_access_token(self, user_id: int) -> str:
-        """Формируем JWT access: короткое время жизни и поле type=access для валидации."""
+        """Создаёт короткоживущий JWT access-токен."""
         return self._create_token(user_id, "access", settings.auth_access_token_expire_minus)
 
     def create_refresh_token(self, user_id: int) -> str:
+        """Создаёт долгоживущий JWT refresh-токен."""
         return self._create_token(user_id, "refresh", settings.auth_refresh_token_expire_minus)
 
     def _create_token(self, user_id: int, token_type: str, expires_minutes: int) -> str:
-        """Собираем payload с временем выпуска/истечения и подписываем секретом приложения."""
+        """Формирует JWT с claim-ами sub, type, iat, exp, iss."""
         now = datetime.now()
         payload = {
             # subject (sub) — идентификатор пользователя в виде строки.

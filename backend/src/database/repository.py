@@ -14,8 +14,8 @@ class UserRepository(IUserRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_user_by_email(self, email: str):
-        """Находим пользователя по email."""
+    async def get_user_by_email(self, email: str) -> Users | None:
+        """Возвращает пользователя по email или None."""
         return await self.session.scalar(select(Users).where(Users.email == email))
 
     async def register(self, email: str, password: str) -> Users:
@@ -34,7 +34,11 @@ class UserRepository(IUserRepository):
             raise UserAlreadyExistsError from exc
 
     async def create_refresh_token(self, user_id: int, token_hash: str, expires_at: datetime) -> RefreshToken:
-        """Вставка refresh token как ХЕШ с датой истечения"""
+        """Сохраняет SHA-256 хэш refresh-токена в БД.
+
+        Returns:
+            RefreshToken: Созданный объект с присвоенным id (после flush).
+        """
         token = RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
         self.session.add(token)
         await self.session.flush()

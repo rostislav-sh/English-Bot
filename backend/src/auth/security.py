@@ -3,12 +3,15 @@ import bcrypt
 
 
 class Security:
-    def hash_password(self, password) -> str:
-        """Хэширует пароль через bcrypt с предварительным SHA-256 прехэшем."""
+    """Хэширование и проверка паролей (SHA-256 прехэш + bcrypt)."""
+
+    def hash_password(self, password: str) -> str:
+        """Возвращает bcrypt-хэш пароля."""
         digest = self._password_digest(password)
         return bcrypt.hashpw(digest, bcrypt.gensalt()).decode("utf-8")
 
     def verify_password(self, password: str, hashed_password: str) -> bool:
+        """Проверяет пароль против bcrypt-хэша из БД."""
         digest = self._password_digest(password)
         return bcrypt.checkpw(digest, hashed_password.encode("utf-8"))
 
