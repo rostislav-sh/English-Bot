@@ -12,9 +12,13 @@ class UserRepository(IUserRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def get_user_by_email(self, email: str):
+        """Находим пользователя по email."""
+        return await self.session.scalar(select(Users).where(Users.email == email))
+
     async def register(self, email: str, password: str) -> Users:
         """Создаёт пользователя. Выбрасывает UserAlreadyExistsError при дубликате."""
-        existing_user = await self.session.scalar(select(Users).where(Users.email == email))
+        existing_user = await self.get_user_by_email(email)
         if existing_user:
             raise UserAlreadyExistsError
 

@@ -7,6 +7,11 @@ if TYPE_CHECKING:
 
 class IUserRepository(ABC):
     @abstractmethod
+    async def get_user_by_email(self, email: str):
+        """Поиск пользователя по email."""
+        ...
+
+    @abstractmethod
     async def register(self, email: str, password: str) -> "Users":
         """Регистрация пользователя"""
         ...

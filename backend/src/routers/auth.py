@@ -31,8 +31,8 @@ async def register(
     try:
         user = await service.register(email=data.email, password=data.password)
         return UserOut.model_validate(user, from_attributes=True)
-    except UserAlreadyExistsError:
-        raise HTTPException(status_code=409, detail="Пользователь уже существует")
+    except UserAlreadyExistsError as error:
+        raise HTTPException(status_code=409, detail="Пользователь уже существует") from error
 
 
 @router.post("/login")
