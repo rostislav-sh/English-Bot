@@ -3,9 +3,9 @@
 from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.params import Depends
 
-from src.database.unitofwork import UserUnitOfWork
+from src.auth.cookies import set_token_cookies
+from src.routers.dependencies import get_user_service
 from src.exceptions import UserAlreadyExistsError, InvalidCredentialsError, AppError
-from src.interfaces.unitofwork import IUserUnitOfWork
 from src.routers.schemas.auth import Authentication, UserOut
 from src.schemas.auth import TokenPair
 from src.service.auth import AuthService
@@ -13,17 +13,12 @@ from src.service.auth import AuthService
 router = APIRouter()
 
 
-async def get_uow() -> IUserUnitOfWork:
-    """Фабрика Unit of Work для Dependency Injection."""
-    return UserUnitOfWork()
-
-
-async def get_user_service(uow: IUserUnitOfWork = Depends(get_uow)) -> AuthService:
-    """Фабрика сервиса аутентификации."""
-    return AuthService(uow=uow)
-
-
-@router.post("/register", response_model=UserOut, status_code=201)
+@router.post(
+    "/register",
+    summary="Регистрация пользователя",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+)
 async def register(
         data: Authentication,
         service: AuthService = Depends(get_user_service),
@@ -38,7 +33,11 @@ async def register(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post(
+    "/login",
+    summary="Вход через JWT (access + refresh)",
+    response_model=TokenPair,
+    status_code=status.HTTP_200_OK,)
 async def login(
         data: Authentication,
         response: Response,
@@ -52,7 +51,8 @@ async def login(
     try:
         access_token, refresh_token = await service.login(email=data.email, password=data.password)
     except InvalidCredentialsError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error),)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error), )
     except AppError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    set_token_cookies(response, access_token, refresh_token)
     return TokenPair(access_token=access_token, refresh_token=refresh_token)

@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
 
+    ACCESS_COOKIE_NAME: str
+    REFRESH_COOKIE_NAME: str
+    SESSION_COOKIE_SECURE: bool
+    SESSION_COOKIE_HTTPONLY: bool
+    SAMESITE: str
+    DOMAIN: str
+    PATH: str
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -34,6 +42,34 @@ class Settings(BaseSettings):
     @property
     def auth_refresh_token_expire_days(self) -> int:
         return self.REFRESH_TOKEN_EXPIRE_DAYS
+
+    @property
+    def access_cookie_name(self) -> str:
+        return self.ACCESS_COOKIE_NAME
+
+    @property
+    def refresh_cookie_name(self) -> str:
+        return self.REFRESH_COOKIE_NAME
+
+    @property
+    def session_cookie_secure(self):
+        return self.SESSION_COOKIE_SECURE
+
+    @property
+    def session_cookie_httponly(self):
+        return self.SESSION_COOKIE_HTTPONLY
+
+    @property
+    def samesite(self) -> str:
+        return self.SAMESITE
+
+    @property
+    def session_cookie_domain(self):
+        return self.DOMAIN
+
+    @property
+    def session_cookie_path(self):
+        return self.PATH
 
     @property
     def app_name(self) -> str:
