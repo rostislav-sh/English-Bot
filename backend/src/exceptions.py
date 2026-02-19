@@ -4,3 +4,7 @@ class AppError(Exception):
 
 class UserAlreadyExistsError(AppError):
     """Пользователь уже существует."""
+
+
+class InvalidCredentialsError(AppError):
+    """Неверный логин или пароль"""

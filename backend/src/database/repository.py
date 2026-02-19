@@ -1,10 +1,12 @@
 """Репозитории для работы с БД."""
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from src.interfaces.repository import IUserRepository
-from src.database.models import Users
+from src.database.models import Users, RefreshToken
 from src.exceptions import UserAlreadyExistsError
 
 
@@ -30,3 +32,10 @@ class UserRepository(IUserRepository):
         except IntegrityError as exc:
             # Race condition: пользователь создан между проверкой и вставкой
             raise UserAlreadyExistsError from exc
+
+    async def create_refresh_token(self, user_id: int, token_hash: str, expires_at: datetime) -> RefreshToken:
+        """Вставка refresh token как ХЕШ с датой истечения"""
+        token = RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+        self.session.add(token)
+        await self.session.flush()
+        return token

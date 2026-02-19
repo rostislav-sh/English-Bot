@@ -13,3 +13,9 @@ class UserOut(BaseModel):
     """Ответ с данными пользователя (без пароля)."""
     id: int
     email: EmailStr
+
+
+class TokenPair(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = 'bearer'

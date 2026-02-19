@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.database.models import Users
+    from src.database.models import Users, RefreshToken
 
 
 class IUserRepository(ABC):
     @abstractmethod
-    async def get_user_by_email(self, email: str):
+    async def get_user_by_email(self, email: str) -> "Users":
         """Поиск пользователя по email."""
         ...
 
@@ -15,3 +16,7 @@ class IUserRepository(ABC):
     async def register(self, email: str, password: str) -> "Users":
         """Регистрация пользователя"""
         ...
+
+    @abstractmethod
+    async def create_refresh_token(self, user_id: int, token_hash: str, expires_at: datetime) -> "RefreshToken":
+        """Вставка refresh token как ХЕШ с датой истечения"""
