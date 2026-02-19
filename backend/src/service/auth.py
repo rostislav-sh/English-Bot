@@ -37,7 +37,7 @@ class AuthService:
             raise InvalidCredentialsError
         return user
 
-    async def _refresh_expiry(self) -> datetime:
+    def _refresh_expiry(self) -> datetime:
         return datetime.now(timezone.utc) + timedelta(days=settings.auth_refresh_token_expire_days)
 
     async def _issue_token(self, user_id: int) -> TokenPair:
@@ -46,7 +46,7 @@ class AuthService:
         refresh_token = tokens.create_refresh_token(user_id=user_id)
         # Хэшируем refresh перед сохранением, чтобы не держать сырой токен в БД.
         refresh_hash = tokens.hash_session_token(refresh_token=refresh_token)
-        expires_at = await self._refresh_expiry()
+        expires_at = self._refresh_expiry()
         async with self.uow:
             await self.uow.user_repo.create_refresh_token(
                 user_id=user_id,
