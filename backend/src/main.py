@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from routers import auth_router
+from src.routers import auth_router
 
 
 @asynccontextmanager
