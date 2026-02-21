@@ -25,8 +25,7 @@ async def register(
 ):
     """Регистрация нового пользователя."""
     try:
-        user = await service.register(email=data.email, password=data.password)
-        return UserOut.model_validate(user, from_attributes=True)
+        user, pair = await service.register(email=data.email, password=data.password)
     except UserAlreadyExistsError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     except AppError as error:
@@ -47,12 +46,17 @@ async def login(
 
     Raises:
         HTTPException 401: Неверный email или пароль.
+
+    Сейчас каждый вызов login создает новую запись в refresh_tokens.
+    Если пользователь логинится с телефона 100 раз, в базе будет 100 активных токенов.
+    При логине имеет смысл удалять истекшие токены,
+    либо оставлять только N последних активных (например, не больше 5 сессий на юзера).
     """
     try:
-        access_token, refresh_token = await service.login(email=data.email, password=data.password)
+        _, pair = await service.login(email=data.email, password=data.password)
     except InvalidCredentialsError as error:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error), )
     except AppError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    set_token_cookies(response, access_token, refresh_token)
-    return TokenPair(access_token=access_token, refresh_token=refresh_token)
+    set_token_cookies(response, pair.access_token, pair.refresh_token)
+    return pair

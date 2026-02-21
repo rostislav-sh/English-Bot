@@ -16,16 +16,17 @@ class AuthService:
     def __init__(self, uow: IUserUnitOfWork):
         self.uow = uow
 
-    async def register(self, email: str, password: str) -> Users:
-        """Создаёт пользователя с захэшированным паролем."""
+    async def register(self, email: str, password: str) -> tuple[User, TokenPair]:
+        """Создаёт пользователя с захэшированным паролем и выдаёт пару токенов."""
         async with self.uow:
             hash_password = security.hash_password(password)
             user = await self.uow.user_repo.register(email=email, password=hash_password)
+            pair = await self._issue_token(user_id=user.id)
             await self.uow.commit()
-            return user
+            return user, pair
 
-    async def login(self, email: str, password: str) -> tuple[str, str]:
-        """Проверяет учётные данные, возвращает (access_token, refresh_token).
+    async def login(self, email: str, password: str) -> tuple[User, TokenPair]:
+        """Проверяет учётные данные, возвращает пользователя и пару токенов.
 
         Raises:
             InvalidCredentialsError: Неверный email или пароль.
