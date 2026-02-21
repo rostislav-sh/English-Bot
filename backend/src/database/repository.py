@@ -43,3 +43,15 @@ class UserRepository(IUserRepository):
         self.session.add(token)
         await self.session.flush()
         return token
+
+    async def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
+        """Ищет refresh-токен по SHA-256 хэшу."""
+        return await self.session.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
+
+    async def delete_refresh_token(self, token_object: RefreshToken) -> None:
+        """Удаляет refresh-токен из БД."""
+        await self.session.delete(token_object)
+
+    async def get_user_by_id(self, user_id: int) -> User | None:
+        """Возвращает пользователя по ID или None."""
+        return await self.session.get(User, user_id)
