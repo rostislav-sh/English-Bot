@@ -31,9 +31,11 @@ class AuthService:
         Raises:
             InvalidCredentialsError: Неверный email или пароль.
         """
-        user = await self._get_user_and_check_password(email=email, password=password)
-        pair = await self._issue_token(user_id=user.id)
-        return pair.access_token, pair.refresh_token
+        async with self.uow:
+            user = await self._get_user_and_check_password(email=email, password=password)
+            pair = await self._issue_token(user_id=user.id)
+            await self.uow.commit()
+            return user, pair
 
 
     async def _get_user_and_check_password(self, email: str, password: str) -> User:
@@ -43,6 +45,12 @@ class AuthService:
             InvalidCredentialsError: Пользователь не найден или пароль неверный.
         """
         user = await self.uow.user_repo.get_user_by_email(email=email)
+        """
+        Если пользователь not user (нет в БД), код завершается за 1 миллисекунду.
+        Если пользователь есть, но пароль неверный, код тратит 100-300 миллисекунд на вычисление хэша пароля (например, Bcrypt).
+        Злоумышленник может замерять время ответа сервера и узнать, зарегистрирован ли такой email в базе. Это называется "User Enumeration Attack".
+        Решение: Вычислять хэш-пустышку, если пользователь не найден, чтобы время ответа всегда было одинаково долгим.
+        """
         if not user or not security.verify_password(password=password, hashed_password=user.password_hash):
             raise InvalidCredentialsError
         return user
@@ -59,11 +67,9 @@ class AuthService:
         # Хэшируем refresh перед сохранением, чтобы не держать сырой токен в БД.
         refresh_hash = tokens.hash_session_token(token=refresh_token)
         expires_at = self._refresh_expiry()
-        async with self.uow:
-            await self.uow.user_repo.create_refresh_token(
-                user_id=user_id,
-                token_hash=refresh_hash,
-                expires_at=expires_at,
-            )
-            await self.uow.commit()
-            return TokenPair(access_token=access_token, refresh_token=refresh_token)
+        await self.uow.user_repo.create_refresh_token(
+            user_id=user_id,
+            token_hash=refresh_hash,
+            expires_at=expires_at,
+        )
+        return TokenPair(access_token=access_token, refresh_token=refresh_token)
