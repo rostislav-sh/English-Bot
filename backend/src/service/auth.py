@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 from src.auth.tokens import tokens
 from src.config import settings
-from src.database.models import Users
+from src.database.models import User
 from src.exceptions import InvalidCredentialsError
 from src.interfaces.unitofwork import IUserUnitOfWork
 from src.auth.security import security
@@ -35,7 +35,7 @@ class AuthService:
         return pair.access_token, pair.refresh_token
 
 
-    async def _get_user_and_check_password(self, email: str, password: str) -> Users:
+    async def _get_user_and_check_password(self, email: str, password: str) -> User:
         """Находит пользователя и проверяет пароль. Не раскрывает, что именно неверно.
 
         Raises:
@@ -56,7 +56,7 @@ class AuthService:
         access_token = tokens.create_access_token(user_id=user_id)
         refresh_token = tokens.create_refresh_token(user_id=user_id)
         # Хэшируем refresh перед сохранением, чтобы не держать сырой токен в БД.
-        refresh_hash = tokens.hash_session_token(refresh_token=refresh_token)
+        refresh_hash = tokens.hash_session_token(token=refresh_token)
         expires_at = self._refresh_expiry()
         async with self.uow:
             await self.uow.user_repo.create_refresh_token(

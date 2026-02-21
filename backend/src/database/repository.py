@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from src.interfaces.repository import IUserRepository
-from src.database.models import Users, RefreshToken
+from src.database.models import User, RefreshToken
 from src.exceptions import UserAlreadyExistsError
 
 
@@ -14,18 +14,18 @@ class UserRepository(IUserRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_user_by_email(self, email: str) -> Users | None:
+    async def get_user_by_email(self, email: str) -> User | None:
         """Возвращает пользователя по email или None."""
-        return await self.session.scalar(select(Users).where(Users.email == email))
+        return await self.session.scalar(select(User).where(User.email == email))
 
-    async def register(self, email: str, password: str) -> Users:
+    async def register(self, email: str, password: str) -> User:
         """Создаёт пользователя. Выбрасывает UserAlreadyExistsError при дубликате."""
         existing_user = await self.get_user_by_email(email)
         if existing_user:
             raise UserAlreadyExistsError
 
         try:
-            user = Users(email=email, password_hash=password)
+            user = User(email=email, password_hash=password)
             self.session.add(user)
             await self.session.flush()  # Получаем id без коммита
             return user
