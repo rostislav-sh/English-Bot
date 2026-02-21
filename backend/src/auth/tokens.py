@@ -23,7 +23,7 @@ class TokenHelper:
 
     def _create_token(self, user_id: int, token_type: str, expires_minutes: int) -> str:
         """Формирует JWT с claim-ами sub, type, iat, exp, iss."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         payload = {
             # subject (sub) — идентификатор пользователя в виде строки.
             "sub": str(user_id),
