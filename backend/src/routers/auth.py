@@ -6,7 +6,7 @@ from fastapi.params import Depends
 from src.auth.cookies import set_token_cookies
 from src.routers.dependencies import get_user_service
 from src.exceptions import UserAlreadyExistsError, InvalidCredentialsError, AppError
-from src.routers.schemas.auth import Authentication, UserOut
+from src.routers.schemas.auth import Authentication, UserOut, RegisterOut, RefreshRequest
 from src.schemas.auth import TokenPair
 from src.service.auth import AuthService
 
@@ -16,20 +16,28 @@ router = APIRouter()
 @router.post(
     "/register",
     summary="Регистрация пользователя",
-    response_model=UserOut,
+    response_model=RegisterOut,
     status_code=status.HTTP_201_CREATED,
 )
 async def register(
         data: Authentication,
+        response: Response,
         service: AuthService = Depends(get_user_service),
 ):
-    """Регистрация нового пользователя."""
+    """Регистрация нового пользователя и выдача пары токенов."""
     try:
         user, pair = await service.register(email=data.email, password=data.password)
     except UserAlreadyExistsError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     except AppError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    set_token_cookies(response, pair.access_token, pair.refresh_token)
+    return RegisterOut(
+        id=user.id,
+        email=user.email,
+        access_token=pair.access_token,
+        refresh_token=pair.refresh_token,
+    )
 
 
 @router.post(
