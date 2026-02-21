@@ -17,7 +17,7 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))  # Добавляем к
 from src.config import settings
 from src.database.config_db import Base
 # Обязательно импортируй ВСЕ модели, иначе Alembic их не увидит!
-from src.database.models import Users
+from src.database.models import User
 
 config = context.config
 
