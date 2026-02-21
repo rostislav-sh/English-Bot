@@ -15,13 +15,19 @@ class TokenHelper:
 
     def create_access_token(self, user_id: int) -> str:
         """Создаёт короткоживущий JWT access-токен."""
-        return self._create_token(user_id, "access", settings.auth_access_token_expire_minutes)
+        return self._create_token(
+            user_id, "access",
+            timedelta(minutes=settings.auth_access_token_expire_minutes),
+        )
 
     def create_refresh_token(self, user_id: int) -> str:
         """Создаёт долгоживущий JWT refresh-токен."""
-        return self._create_token(user_id, "refresh", settings.auth_refresh_token_expire_days)
+        return self._create_token(
+            user_id, "refresh",
+            timedelta(days=settings.auth_refresh_token_expire_days),
+        )
 
-    def _create_token(self, user_id: int, token_type: str, expires_minutes: int) -> str:
+    def _create_token(self, user_id: int, token_type: str, expires_delta: timedelta) -> str:
         """Формирует JWT с claim-ами sub, type, iat, exp, iss."""
         now = datetime.now(timezone.utc)
         payload = {
@@ -32,7 +38,7 @@ class TokenHelper:
             # issued-at (iat) — время выпуска.
             "iat": int(now.timestamp()),
             # expiration (exp) — время истечения.
-            "exp": int((now + timedelta(minutes=expires_minutes)).timestamp()),
+            "exp": int((now + expires_delta).timestamp()),
             # issuer (iss) — имя приложения, чтобы отличать токены разных сервисов.
             "iss": settings.app_name,
         }
