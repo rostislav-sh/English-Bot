@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SECURE: bool
     SESSION_COOKIE_HTTPONLY: bool
     SAMESITE: str
-    DOMAIN: str
+    DOMAIN: str | None = None
     PATH: str
 
     @property
