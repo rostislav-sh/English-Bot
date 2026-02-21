@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 import jwt
 
@@ -15,11 +15,11 @@ class TokenHelper:
 
     def create_access_token(self, user_id: int) -> str:
         """Создаёт короткоживущий JWT access-токен."""
-        return self._create_token(user_id, "access", settings.auth_access_token_expire_minus)
+        return self._create_token(user_id, "access", settings.auth_access_token_expire_minutes)
 
     def create_refresh_token(self, user_id: int) -> str:
         """Создаёт долгоживущий JWT refresh-токен."""
-        return self._create_token(user_id, "refresh", settings.auth_refresh_token_expire_minus)
+        return self._create_token(user_id, "refresh", settings.auth_refresh_token_expire_days)
 
     def _create_token(self, user_id: int, token_type: str, expires_minutes: int) -> str:
         """Формирует JWT с claim-ами sub, type, iat, exp, iss."""

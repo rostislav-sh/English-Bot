@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         return self.JWT_ALGORITHM
 
     @property
-    def auth_access_token_expire_minus(self) -> int:
+    def auth_access_token_expire_minutes(self) -> int:
         return self.ACCESS_TOKEN_EXPIRE_MINUTES
 
     @property
