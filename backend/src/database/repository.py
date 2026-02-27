@@ -62,55 +62,57 @@ class UserRepository(IUserRepository):
         Вызывать ПОСЛЕ создания нового refresh-токена.
         После выполнения у пользователя останется не более max_limit активных токенов.
         """
-        await self._delete_stale_refresh_tokens(user_id)
+        await self._delete_stale_refresh_tokens(user_id)  # Сначала чистим истекшие/отозванные токены
 
-        tokens_to_delete = await self._get_token_ids_beyond_limit(user_id, max_limit)
+        tokens_to_delete = await self._get_token_ids_beyond_limit(user_id, max_limit)  # Список ID токенов сверх лимита
 
-        await self._delete_tokens_by_ids(tokens_to_delete)
+        await self._delete_tokens_by_ids(tokens_to_delete)  # Удаляем лишние токены
 
     async def _delete_stale_refresh_tokens(self, user_id: int) -> None:
         """Удаляет протухшие и отозванные токены конкретного пользователя."""
         query = delete(RefreshToken).where(
-            RefreshToken.user_id == user_id,
-            or_(
-                RefreshToken.expires_at < datetime.now(UTC),
-                RefreshToken.revoked.is_(True),
-            ),
+            RefreshToken.user_id == user_id,  # Только токены указанного пользователя
+            or_(  # Условия очистки объединяем через OR
+                RefreshToken.expires_at < datetime.now(UTC),  # Токен уже истек
+                RefreshToken.revoked.is_(True),  # Токен отозван
+            )
         )
-        await self.session.execute(query)
+        await self.session.execute(query)  # Выполняем запрос
 
     async def _get_token_ids_beyond_limit(self, user_id: int, max_limit: int) -> list[int]:
         """Возвращает ID активных токенов, превышающих лимит (самые старые)."""
-        limit_to_keep = max(max_limit, 0)
+        limit_to_keep = max(max_limit, 0)  # Негативный лимит трактуем как 0
 
         query = (
-            select(RefreshToken.id)
-            .where(
-                RefreshToken.user_id == user_id,
-                RefreshToken.revoked.is_(False),
-                RefreshToken.expires_at >= datetime.now(UTC),
+            select(RefreshToken.id)  # Берем только ID токенов
+            .where(  # Фильтруем только активные токены пользователя
+                RefreshToken.user_id == user_id,  # Токены конкретного пользователя
+                RefreshToken.revoked.is_(False),  # Только неотозванные
+                RefreshToken.expires_at >= datetime.now(UTC),  # Только неистекшие
             )
-            .order_by(RefreshToken.created_at.desc(), RefreshToken.id.desc())
-            .offset(limit_to_keep)
+            .order_by(RefreshToken.created_at.desc(), RefreshToken.id.desc())  # Сначала самые новые
+            .offset(limit_to_keep)  # Пропускаем допустимое количество
         )
 
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        result = await self.session.execute(query)  # Выполняем запрос
+        return list(result.scalars().all())  # Возвращаем список ID токенов на удаление
 
     async def _delete_tokens_by_ids(self, token_ids: list[int]) -> None:
         """Удаляет токены по списку их ID."""
-        if token_ids:
-            query = delete(RefreshToken).where(RefreshToken.id.in_(token_ids))
-            await self.session.execute(query)
+        if token_ids:  # Если список не пустой
+            query = delete(RefreshToken).where(
+                RefreshToken.id.in_(token_ids)  # Удаляем по списку ID
+            )
+            await self.session.execute(query)  # Выполняем запрос
 
     async def delete_all_expired_refresh_tokens(self) -> int:
         """Глобальная чистка протухших и отозванных токенов (для Celery)."""
         query = delete(RefreshToken).where(
-            or_(
-                RefreshToken.expires_at < datetime.now(UTC),
-                RefreshToken.revoked.is_(True),
+            or_(  # Условия очистки объединяем через OR
+                RefreshToken.expires_at < datetime.now(UTC),  # Токен истек
+                RefreshToken.revoked.is_(True),  # Токен отозван
             )
         )
-        result = await self.session.execute(query)
+        result = await self.session.execute(query)  # Выполняем запрос
 
-        return result.rowcount or 0
+        return result.rowcount or 0  # Возвращаем число удаленных строк (0 при None)
