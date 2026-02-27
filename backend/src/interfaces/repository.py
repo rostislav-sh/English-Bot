@@ -31,4 +31,16 @@ class IUserRepository(ABC):
     async def get_user_by_id(self, user_id: int) -> "User | None":
         """Получение пользователя по id."""
 
+    @abstractmethod
+    async def enforce_session_limit(self, user_id: int, max_limit: int) -> None:
+        """Контролирует лимит активных сессий пользователя.
+
+        Вызывать ПОСЛЕ создания нового refresh-токена.
+        После выполнения у пользователя останется не более max_limit активных токенов.
+        """
+
+    @abstractmethod
+    async def delete_all_expired_refresh_tokens(self) -> int:
+        """Глобальная чистка протухших и отозванных токенов (для Celery)."""
+
 

@@ -1,8 +1,8 @@
 """Репозитории для работы с БД."""
-from datetime import datetime
+from datetime import datetime, UTC
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete, or_
 from sqlalchemy.exc import IntegrityError
 
 from src.interfaces.repository import IUserRepository
@@ -55,3 +55,62 @@ class UserRepository(IUserRepository):
     async def get_user_by_id(self, user_id: int) -> User | None:
         """Возвращает пользователя по ID или None."""
         return await self.session.get(User, user_id)
+
+    async def enforce_session_limit(self, user_id: int, max_limit: int) -> None:
+        """Контролирует лимит активных сессий пользователя.
+
+        Вызывать ПОСЛЕ создания нового refresh-токена.
+        После выполнения у пользователя останется не более max_limit активных токенов.
+        """
+        await self._delete_stale_refresh_tokens(user_id)
+
+        tokens_to_delete = await self._get_token_ids_beyond_limit(user_id, max_limit)
+
+        await self._delete_tokens_by_ids(tokens_to_delete)
+
+    async def _delete_stale_refresh_tokens(self, user_id: int) -> None:
+        """Удаляет протухшие и отозванные токены конкретного пользователя."""
+        query = delete(RefreshToken).where(
+            RefreshToken.user_id == user_id,
+            or_(
+                RefreshToken.expires_at < datetime.now(UTC),
+                RefreshToken.revoked.is_(True),
+            ),
+        )
+        await self.session.execute(query)
+
+    async def _get_token_ids_beyond_limit(self, user_id: int, max_limit: int) -> list[int]:
+        """Возвращает ID активных токенов, превышающих лимит (самые старые)."""
+        limit_to_keep = max(max_limit, 0)
+
+        query = (
+            select(RefreshToken.id)
+            .where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked.is_(False),
+                RefreshToken.expires_at >= datetime.now(UTC),
+            )
+            .order_by(RefreshToken.created_at.desc(), RefreshToken.id.desc())
+            .offset(limit_to_keep)
+        )
+
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def _delete_tokens_by_ids(self, token_ids: list[int]) -> None:
+        """Удаляет токены по списку их ID."""
+        if token_ids:
+            query = delete(RefreshToken).where(RefreshToken.id.in_(token_ids))
+            await self.session.execute(query)
+
+    async def delete_all_expired_refresh_tokens(self) -> int:
+        """Глобальная чистка протухших и отозванных токенов (для Celery)."""
+        query = delete(RefreshToken).where(
+            or_(
+                RefreshToken.expires_at < datetime.now(UTC),
+                RefreshToken.revoked.is_(True),
+            )
+        )
+        result = await self.session.execute(query)
+
+        return result.rowcount or 0

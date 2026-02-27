@@ -25,6 +25,8 @@ class Settings(BaseSettings):
 
     FAKE_PASSWORD_HASH: str
 
+    MAX_SESSIONS_PER_USER: int
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -80,6 +82,10 @@ class Settings(BaseSettings):
     @property
     def fake_password_hash(self) -> str:
         return self.FAKE_PASSWORD_HASH
+
+    @property
+    def max_sessions_per_user(self) -> int:
+        return self.MAX_SESSIONS_PER_USER
 
     model_config = SettingsConfigDict(env_file=".env")
 
