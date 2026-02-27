@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     DOMAIN: str | None = None
     PATH: str
 
+    FAKE_PASSWORD_HASH: str
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -74,6 +76,10 @@ class Settings(BaseSettings):
     @property
     def app_name(self) -> str:
         return self.APP_NAME
+
+    @property
+    def fake_password_hash(self) -> str:
+        return self.FAKE_PASSWORD_HASH
 
     model_config = SettingsConfigDict(env_file=".env")
 

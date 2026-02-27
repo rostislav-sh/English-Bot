@@ -51,14 +51,11 @@ class AuthService:
     async def _get_user_and_check_password(self, email: str, password: str) -> User:
         """Проверяет пароль. Не раскрывает, что именно неверно."""
         user = await self.uow.user_repo.get_user_by_email(email=email)
-        # TODO:
-        #  Если пользователь not user (нет в БД), код завершается за 1 миллисекунду.
-        #  Если пользователь есть, но пароль неверный, код тратит 100-300 мс на bcrypt.
-        #  Злоумышленник может замерять время ответа и узнать, зарегистрирован ли email.
-        #  Это называется "User Enumeration Attack".
-        #  TODO: Вычислять хэш-пустышку, если пользователь не найден,
-        #   чтобы время ответа всегда было одинаково долгим.
-        if not user or not security.verify_password(password=password, hashed_password=user.password_hash):
+        if not user:
+            # Хэш-пустышка, чтобы время ответа было одинаковым (защита от User Enumeration Attack)
+            security.verify_password(password=password, hashed_password=settings.fake_password_hash)
+            raise InvalidCredentialsError
+        if not security.verify_password(password=password, hashed_password=user.password_hash):
             raise InvalidCredentialsError
         return user
 
