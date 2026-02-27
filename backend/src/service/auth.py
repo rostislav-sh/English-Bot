@@ -65,16 +65,20 @@ class AuthService:
 
     async def _issue_token(self, user_id: int) -> TokenPair:
         """Создаёт access/refresh JWT и сохраняет хэш refresh в БД."""
-        access_token = tokens.create_access_token(user_id=user_id)
-        refresh_token = tokens.create_refresh_token(user_id=user_id)
-        refresh_hash = tokens.hash_session_token(token=refresh_token)
-        expires_at = self._refresh_expiry()
-        await self.uow.user_repo.create_refresh_token(
+        access_token = tokens.create_access_token(user_id=user_id)  # Генерируем access-токен
+        refresh_token = tokens.create_refresh_token(user_id=user_id)  # Генерируем refresh-токен
+        refresh_hash = tokens.hash_session_token(token=refresh_token)  # Хэшируем refresh для хранения
+        expires_at = self._refresh_expiry()  # Вычисляем время истечения refresh-токена
+        await self.uow.user_repo.create_refresh_token(  # Сохраняем refresh-хэш в БД
             user_id=user_id,
             token_hash=refresh_hash,
             expires_at=expires_at,
         )
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+        await self.uow.user_repo.enforce_session_limit(  # Применяем лимит сессий
+            user_id=user_id,
+            max_limit=settings.max_sessions_per_user,
+        )
+        return TokenPair(access_token=access_token, refresh_token=refresh_token)  # Возвращаем пару токенов
 
     async def _get_valid_refresh(self, refresh_token: str) -> RefreshToken:
         """Ищет refresh в БД, проверяет revoked и expires_at."""
