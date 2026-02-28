@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Resolve .env relative to backend/ directory for local runs
+# Разрешение имени файла .env относительно каталога backend/ для локальных запусков
 _env_path = Path(__file__).resolve().parents[1] / ".env"
 
 
@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASSWORD: str
     DB_NAME: str
+
+    REDIS_URL: str
+
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
 
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
@@ -30,8 +35,6 @@ class Settings(BaseSettings):
     FAKE_PASSWORD_HASH: str
 
     MAX_SESSIONS_PER_USER: int
-
-    REDIS_URL: str
 
     @property
     def database_url(self) -> str:
@@ -96,6 +99,16 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         return self.REDIS_URL
+
+    @property
+    def celery_broker_url(self) -> str:
+        """Возвращает URL брокера (очереди задач)."""
+        return self.CELERY_BROKER_URL
+
+    @property
+    def celery_result_backend(self) -> str:
+        """Возвращает URL бэкенда (хранилища результатов)."""
+        return self.CELERY_RESULT_BACKEND
 
     model_config = SettingsConfigDict(env_file=_env_path)
 
