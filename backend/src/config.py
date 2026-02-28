@@ -1,4 +1,8 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve .env relative to backend/ directory for local runs
+_env_path = Path(__file__).resolve().parents[1] / ".env"
 
 
 class Settings(BaseSettings):
@@ -26,6 +30,8 @@ class Settings(BaseSettings):
     FAKE_PASSWORD_HASH: str
 
     MAX_SESSIONS_PER_USER: int
+
+    REDIS_URL: str
 
     @property
     def database_url(self) -> str:
@@ -87,7 +93,11 @@ class Settings(BaseSettings):
     def max_sessions_per_user(self) -> int:
         return self.MAX_SESSIONS_PER_USER
 
-    model_config = SettingsConfigDict(env_file=".env")
+    @property
+    def redis_url(self) -> str:
+        return self.REDIS_URL
+
+    model_config = SettingsConfigDict(env_file=_env_path)
 
 
 settings = Settings()
