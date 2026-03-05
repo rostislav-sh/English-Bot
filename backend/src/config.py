@@ -36,6 +36,10 @@ class Settings(BaseSettings):
 
     MAX_SESSIONS_PER_USER: int
 
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_REDIRECT_URI: str
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -109,6 +113,18 @@ class Settings(BaseSettings):
     def celery_result_backend(self) -> str:
         """Возвращает URL бэкенда (хранилища результатов)."""
         return self.CELERY_RESULT_BACKEND
+
+    @property
+    def google_client_id(self) -> str:
+        return self.GOOGLE_CLIENT_ID
+
+    @property
+    def google_client_secret(self) -> str:
+        return self.GOOGLE_CLIENT_SECRET
+
+    @property
+    def google_redirect_uri(self) -> str:
+        return self.GOOGLE_REDIRECT_URI
 
     model_config = SettingsConfigDict(env_file=_env_path)
 
