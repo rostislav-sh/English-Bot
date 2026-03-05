@@ -46,12 +46,6 @@ async def login(
 ) -> TokenPair:
     """Проверяет учётные данные и возвращает пару токенов (access + refresh)."""
 
-    # TODO:
-    #  Сейчас каждый вызов login создает новую запись в refresh_tokens.
-    #  Если пользователь логинится с телефона 100 раз, в базе будет 100 активных токенов.
-    #  При логине имеет смысл удалять истекшие токены,
-    #  либо оставлять только N последних активных (например, не больше 5 сессий на юзера).
-
     _, pair = await service.login(email=data.email, password=data.password)
     set_token_cookies(response, pair.access_token, pair.refresh_token)
     return pair
