@@ -1,9 +1,19 @@
 import hashlib
 import bcrypt
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
+
+from src.config import settings
+
 
 
 class Security:
-    """Хэширование и проверка паролей (SHA-256 прехэш + bcrypt)."""
+    """Хэширование и проверка паролей (SHA-256 прехэш + bcrypt),
+    а также верификация Google OAuth ID-токенов."""
+
+    # Кэшируем Request-объект, чтобы повторно использовать HTTP-сессию
+    # при загрузке публичных ключей Google (кэш сертификатов внутри).
+    _google_request = google_requests.Request()
 
     def hash_password(self, password: str) -> str:
         """Возвращает bcrypt-хэш пароля."""
