@@ -42,5 +42,3 @@ class IUserRepository(ABC):
     @abstractmethod
     async def delete_all_expired_refresh_tokens(self) -> int:
         """Глобальная чистка протухших и отозванных токенов (для Celery)."""
-
-
