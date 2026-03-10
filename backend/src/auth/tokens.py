@@ -1,3 +1,5 @@
+"""Создание и хэширование JWT-токенов (access / refresh)."""
+
 import hashlib
 from datetime import datetime, timezone, timedelta
 
@@ -17,32 +19,29 @@ class TokenHelper:
         """Создаёт короткоживущий JWT access-токен."""
         return self._create_token(
             user_id, "access",
-            timedelta(minutes=settings.auth_access_token_expire_minutes),
+            timedelta(minutes=settings.access_token_expire_minutes),
         )
 
     def create_refresh_token(self, user_id: int) -> str:
         """Создаёт долгоживущий JWT refresh-токен."""
         return self._create_token(
             user_id, "refresh",
-            timedelta(days=settings.auth_refresh_token_expire_days),
+            timedelta(days=settings.refresh_token_expire_days),
         )
 
     def _create_token(self, user_id: int, token_type: str, expires_delta: timedelta) -> str:
         """Формирует JWT с claim-ами sub, type, iat, exp, iss."""
         now = datetime.now(timezone.utc)
         payload = {
-            # subject (sub) — идентификатор пользователя в виде строки.
-            "sub": str(user_id),
-            # собственное поле type для различения типов (access/refresh).
-            "type": token_type,
-            # issued-at (iat) — время выпуска.
-            "iat": int(now.timestamp()),
-            # expiration (exp) — время истечения.
-            "exp": int((now + expires_delta).timestamp()),
-            # issuer (iss) — имя приложения, чтобы отличать токены разных сервисов.
-            "iss": settings.app_name,
+            "sub": str(user_id),           # subject — идентификатор пользователя
+            "type": token_type,             # тип токена (access / refresh)
+            "iat": int(now.timestamp()),    # issued-at — время выпуска
+            "exp": int((now + expires_delta).timestamp()),  # expiration — время истечения
+            "iss": settings.app_name,       # issuer — имя приложения
         }
         return jwt.encode(payload, settings.auth_jwt_secret_key, algorithm=settings.auth_jwt_algorithm)
+        token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+        return token
 
 
 tokens = TokenHelper()
