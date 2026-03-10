@@ -24,9 +24,13 @@ def set_token_cookies(response: Response, access_token: str, refresh_token: str)
         httponly=settings.session_cookie_httponly,
         secure=settings.session_cookie_secure,
         samesite=settings.samesite,
-        max_age=settings.auth_refresh_token_expire_days * 86400,
-        domain=settings.session_cookie_domain,
-        path=settings.session_cookie_path,
+        max_age=settings.refresh_token_expire_days * 86400,
+        domain=settings.domain,
+        path=settings.path,
+    )
+    logger.debug("Токены установлены в cookie")
+
+
 def set_cookies_google_oauth_state(response: Response, state: str) -> None:
     """Устанавливает CSRF-state для Google OAuth в httponly cookie (TTL 5 мин)."""
     response.set_cookie(
