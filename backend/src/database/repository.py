@@ -8,7 +8,7 @@ from sqlalchemy import select, delete, or_
 from sqlalchemy.exc import IntegrityError
 
 from src.interfaces.repository import IUserRepository
-from src.database.models import User, RefreshToken
+from src.database.models import User, RefreshToken, AuthProvider
 from src.exceptions import UserAlreadyExistsError
 from src.schemas.auth import GoogleUserData
 
