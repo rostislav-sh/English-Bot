@@ -1,10 +1,15 @@
+"""Утилиты безопасности: хэширование паролей и верификация Google ID-токенов."""
+
 import hashlib
+import logging
+
 import bcrypt
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
 from src.config import settings
 
+logger = logging.getLogger(__name__)
 
 
 class Security:
@@ -25,7 +30,6 @@ class Security:
         digest = self._password_digest(password)
         return bcrypt.checkpw(digest, hashed_password.encode("utf-8"))
 
-    def _password_digest(self, password) -> bytes:
     def decode_google_token(self, token: str) -> dict:
         """Верифицирует подпись Google ID-токена и возвращает его payload.
 

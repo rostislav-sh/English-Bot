@@ -1,4 +1,3 @@
-"""Сервис аутентификации."""
 """Сервис аутентификации.
 
 Содержит всю бизнес-логику: регистрация, вход, ротация токенов,
@@ -6,6 +5,7 @@ OAuth через Google.
 """
 
 import asyncio
+import logging
 import secrets
 import urllib.parse
 from datetime import datetime, timezone, timedelta
@@ -30,9 +30,9 @@ from src.exceptions import (
 from src.interfaces.redis_auth_state import RedisAuthState
 from src.interfaces.unitofwork import IUserUnitOfWork
 from src.auth.security import security
-from src.schemas.auth import TokenPair
 from src.schemas.auth import TokenPair, GoogleUserData
 
+logger = logging.getLogger(__name__)
 
 # Тайм-аут для HTTP-запросов к Google (секунды)
 _GOOGLE_HTTP_TIMEOUT = aiohttp.ClientTimeout(total=10)
@@ -49,29 +49,35 @@ class AuthService:
 
     async def register(self, email: str, password: str) -> tuple[User, TokenPair]:
         """Создаёт пользователя и выдаёт пару токенов."""
+        logger.info("Регистрация пользователя: %s", email)
         async with self.uow:
             hash_password = security.hash_password(password)
             user = await self.uow.user_repo.register(email=email, password=hash_password)
             pair = await self._issue_token(user_id=user.id)
             await self.uow.commit()
+            logger.info("Пользователь зарегистрирован: id=%s, email=%s", user.id, email)
             return user, pair
 
     async def login(self, email: str, password: str) -> tuple[User, TokenPair]:
         """Проверяет учётные данные, возвращает пользователя и пару токенов."""
+        logger.info("Попытка входа: %s", email)
         async with self.uow:
             user = await self._get_user_and_check_password(email=email, password=password)
             pair = await self._issue_token(user_id=user.id)
             await self.uow.commit()
+            logger.info("Успешный вход: user_id=%s", user.id)
             return user, pair
 
     async def refresh(self, raw_refresh_token: str) -> tuple[User, TokenPair]:
         """Ротация: валидирует старый refresh, удаляет его, выдаёт новую пару."""
+        logger.debug("Ротация refresh-токена")
         async with self.uow:
             update = await self._get_valid_refresh(refresh_token=raw_refresh_token)
             user = await self._get_user_for_token(user_id=update.user_id)
             await self.uow.user_repo.delete_refresh_token(token_object=update)
             pair = await self._issue_token(user_id=user.id)
             await self.uow.commit()
+            logger.info("Refresh-токен обновлён: user_id=%s", user.id)
             return user, pair
 
     async def get_google_url(self) -> tuple[str, str]:
@@ -93,6 +99,7 @@ class AuthService:
             "state": state,
         }
         url = f"{settings.base_url}?{urllib.parse.urlencode(params)}"
+        logger.info("Сгенерирован Google OAuth URL, state=%s…", state[:8])
         return url, state
 
     async def authenticate_via_google(self, code: str, state: str) -> tuple[User, TokenPair]:
@@ -105,6 +112,7 @@ class AuthService:
         Returns:
             tuple[User, TokenPair]: пользователь и пара JWT-токенов.
         """
+        logger.info("Google OAuth callback, state=%s…", state[:8])
         await self.redis.consume_state(state)
 
         raw_id_token = await self._exchange_code_for_token(code)
@@ -116,11 +124,13 @@ class AuthService:
             if not user:
                 user = await self.uow.user_repo.get_user_by_email(user_info.email)
                 if user:
+                    logger.info("Привязка Google к существующему аккаунту: user_id=%s", user.id)
                     user = await self.uow.user_repo.link_google_account(user, user_info)
                 else:
                     logger.info("Создание нового пользователя через Google: email=%s", user_info.email)
                     user = await self.uow.user_repo.create_google_user(user_info)
             else:
+                logger.info("Вход через Google: user_id=%s", user.id)
 
             pair = await self._issue_token(user_id=user.id)
             await self.uow.commit()
@@ -153,6 +163,7 @@ class AuthService:
                         raise GoogleExpiredAuthorizationCodeError
                     token_data = await response.json()
         except asyncio.TimeoutError:
+            logger.error("Тайм-аут при обмене кода авторизации Google")
             raise GoogleTokenExchangeTimeoutError
 
         id_token = token_data.get("id_token")
@@ -160,6 +171,7 @@ class AuthService:
             logger.error("Google не вернул id_token, ключи ответа: %s", list(token_data.keys()))
             raise GoogleIdTokenNotFoundError
 
+        logger.debug("Google id_token получен успешно")
         return id_token
 
     async def _parse_and_validate_google_token(self, raw_id_token: str) -> GoogleUserData:
@@ -179,9 +191,11 @@ class AuthService:
             )
             user_info = GoogleUserData(**decoded_token)
         except (ValueError, ValidationError) as error:
+            logger.warning("Ошибка верификации Google ID-токена: %s", error)
             raise GoogleDataReadError(str(error))
 
         if not user_info.email_verified:
+            logger.warning("Email не подтверждён в Google: %s", user_info.email)
             raise GoogleEmailNotFoundError
 
         return user_info
@@ -194,10 +208,14 @@ class AuthService:
         if not user:
             # Хэш-пустышка, чтобы время ответа было одинаковым (защита от User Enumeration Attack)
             security.verify_password(password=password, hashed_password=settings.fake_password_hash)
+            logger.warning("Попытка входа с несуществующим email: %s", email)
             raise InvalidCredentialsError
         if not security.verify_password(password=password, hashed_password=user.password_hash):
+            logger.warning("Неверный пароль: user_id=%s", user.id)
             raise InvalidCredentialsError
         return user
+
+    # ── Токены ───────────────────────────────────────────────────────
 
     def _refresh_expiry(self) -> datetime:
         """UTC-время истечения refresh-токена."""
@@ -219,7 +237,7 @@ class AuthService:
             user_id=user_id,
             max_limit=settings.max_sessions_per_user,
         )
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)  # Возвращаем пару токенов
+        logger.debug("Выданы токены: user_id=%s", user_id)
         return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
     async def _get_valid_refresh(self, refresh_token: str) -> RefreshToken:
@@ -228,6 +246,7 @@ class AuthService:
         stored = await self.uow.user_repo.get_refresh_token(token_hash=token_hash)
 
         if not stored or stored.revoked:
+            logger.warning("Refresh-токен не найден или отозван")
             raise RefreshTokenNotFoundError
 
         now = datetime.now(timezone.utc)
@@ -236,6 +255,7 @@ class AuthService:
         if expires_at <= now:
             await self.uow.user_repo.delete_refresh_token(token_object=stored)
             await self.uow.commit()
+            logger.info("Refresh-токен истёк, удалён: id=%s", stored.id)
             raise RefreshTokenLifetimeExpiredError
 
         return stored
@@ -243,10 +263,9 @@ class AuthService:
     async def _get_user_for_token(self, user_id: int) -> User:
         """Возвращает пользователя по ID или выбрасывает UserNotFoundError."""
         user = await self.uow.user_repo.get_user_by_id(user_id=user_id)
-
         if not user:
+            logger.warning("Пользователь не найден: user_id=%s", user_id)
             raise UserNotFoundError
-
         return user
 
     @staticmethod

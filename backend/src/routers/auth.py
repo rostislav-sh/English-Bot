@@ -3,8 +3,7 @@
 Все эндпоинты: регистрация, вход, обновление токенов, Google OAuth.
 """
 
-from fastapi import APIRouter, Response, status
-from fastapi.params import Depends
+import logging
 
 from fastapi import APIRouter, Request, Response, status
 from fastapi.params import Depends, Cookie
@@ -21,7 +20,10 @@ from src.routers.schemas.auth import (
     Authentication, RegisterOut, RefreshRequest,
 )
 from src.schemas.auth import TokenPair
-from src.service.auth import AuthService
+
+logger = logging.getLogger(__name__)
+
+# Rate-limiter (общий с main.py через app.state)
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter()
@@ -41,6 +43,7 @@ async def register(
         service: AuthServiceProtocol = Depends(get_user_service),
 ):
     """Регистрация нового пользователя и выдача пары токенов."""
+    logger.info("POST /register email=%s", data.email)
     user, pair = await service.register(email=data.email, password=data.password)
     set_token_cookies(response, pair.access_token, pair.refresh_token)
     return RegisterOut(
@@ -65,7 +68,7 @@ async def login(
         service: AuthServiceProtocol = Depends(get_user_service),
 ) -> TokenPair:
     """Проверяет учётные данные и возвращает пару токенов (access + refresh)."""
-
+    logger.info("POST /login email=%s", data.email)
     _, pair = await service.login(email=data.email, password=data.password)
     set_token_cookies(response, pair.access_token, pair.refresh_token)
     return pair
@@ -82,6 +85,7 @@ async def refresh(
         service: AuthServiceProtocol = Depends(get_user_service),
 ) -> TokenPair:
     """Обновление пары токенов по refresh токену."""
+    logger.debug("POST /token/refresh")
     _, pair = await service.refresh(data.refresh_token)
     set_token_cookies(response, pair.access_token, pair.refresh_token)
     return pair
@@ -95,6 +99,7 @@ async def get_google_login_url(
         service: AuthServiceProtocol = Depends(get_user_service),
 ) -> RedirectResponse:
     """Генерирует URL для редиректа пользователя на Google OAuth."""
+    logger.info("GET /auth/google")
 
     url, state = await service.get_google_url()
 
@@ -119,17 +124,20 @@ async def google_auth_callback(
 ) -> RedirectResponse:
     """Обрабатывает GET-редирект от Google: проверяет state, обменивает code на токены,
     ставит JWT-куки и редиректит пользователя на фронтенд."""
+    logger.info("GET /auth/google/callback")
 
     base = settings.frontend_redirect_url
 
     # Google вернул ошибку (пользователь отменил вход и т.д.)
     if error or not code or not state:
+        logger.warning("Ошибка Google OAuth или отсутствуют параметры: error=%s", error)
         return RedirectResponse(
             url=f"{base}?auth_error=google_cancelled", status_code=status.HTTP_302_FOUND,
         )
 
     # Проверка CSRF: state из cookie должен совпадать с state из query
     if not google_oauth_state or google_oauth_state != state:
+        logger.warning("Несоответствие состояний: cookie=%s query=%s", google_oauth_state, state)
         return RedirectResponse(
             url=f"{base}?auth_error=csrf_mismatch", status_code=status.HTTP_302_FOUND,
         )
@@ -138,6 +146,7 @@ async def google_auth_callback(
     try:
         _, pair = await service.authenticate_via_google(code=code, state=state)
     except AppError as exc:
+        logger.error("Бизнес ошибка Google OAuth: %s", exc)
         return RedirectResponse(
             url=f"{base}?auth_error=google_auth_failed", status_code=status.HTTP_302_FOUND,
         )
@@ -147,4 +156,5 @@ async def google_auth_callback(
     response.delete_cookie(key="google_oauth_state", path="/", domain=settings.domain)
     set_token_cookies(response, pair.access_token, pair.refresh_token)
 
+    logger.info("Проверка подлинности Google OAuth завершена. Редирект на фронтенд.")
     return response

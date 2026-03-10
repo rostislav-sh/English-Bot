@@ -1,8 +1,16 @@
-"""Утилиты для работы с auth-cookie."""
+"""Утилиты для работы с auth-cookie.
+
+Устанавливает httponly-cookie для access/refresh токенов
+и Google OAuth state.
+"""
+
+import logging
 
 from fastapi import Response
 
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def set_token_cookies(response: Response, access_token: str, refresh_token: str) -> None:
@@ -13,11 +21,10 @@ def set_token_cookies(response: Response, access_token: str, refresh_token: str)
         httponly=settings.session_cookie_httponly,
         secure=settings.session_cookie_secure,
         samesite=settings.samesite,
-        max_age=settings.auth_access_token_expire_minutes * 60,
-        domain=settings.session_cookie_domain,
-        path=settings.session_cookie_path,
+        max_age=settings.access_token_expire_minutes * 60,
+        domain=settings.domain,
+        path=settings.path,
     )
-
     response.set_cookie(
         key=settings.refresh_cookie_name,
         value=refresh_token,
@@ -41,3 +48,4 @@ def set_cookies_google_oauth_state(response: Response, state: str) -> None:
         samesite=settings.samesite,
         secure=settings.session_cookie_secure,
     )
+    logger.debug("Google OAuth state установлен в cookie")

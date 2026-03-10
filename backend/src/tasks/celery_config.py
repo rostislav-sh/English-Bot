@@ -1,8 +1,12 @@
 """Инициализация и конфигурация экземпляра Celery."""
 
+import logging
+
 from celery import Celery
 
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 celery_app = Celery(
     "auth_tasks",
@@ -23,3 +27,5 @@ celery_app.conf.update(
         "src.tasks.schedule",
     ],
 )
+
+logger.info("Celery app инициализирован: broker=%s", settings.celery_broker_url)

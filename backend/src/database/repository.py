@@ -1,6 +1,6 @@
-"""Репозитории для работы с БД."""
 """Репозитории для работы с БД (SQLAlchemy async)."""
 
+import logging
 from datetime import datetime, UTC
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from src.database.models import User, RefreshToken, AuthProvider
 from src.exceptions import UserAlreadyExistsError
 from src.schemas.auth import GoogleUserData
 
+logger = logging.getLogger(__name__)
 
 
 class UserRepository(IUserRepository):
@@ -35,18 +36,20 @@ class UserRepository(IUserRepository):
         return await self.session.scalar(select(User).where(User.google_id == google_id))
 
     async def register(self, email: str, password: str) -> User:
-        """Создаёт пользователя. Выбрасывает UserAlreadyExistsError при дубликате."""
+        """Создаёт локального пользователя. Выбрасывает UserAlreadyExistsError при дубликате."""
         existing_user = await self.get_user_by_email(email)
         if existing_user:
             raise UserAlreadyExistsError
 
         try:
-            user = User(email=email, password_hash=password)
+            user = User(email=email, password_hash=password, auth_provider=AuthProvider.LOCAL)
             self.session.add(user)
-            await self.session.flush()  # Получаем id без коммита
+            await self.session.flush()
+            logger.info("Пользователь создан: id=%s, email=%s", user.id, email)
             return user
         except IntegrityError as exc:
             # Race condition: пользователь создан между проверкой и вставкой
+            logger.warning("IntegrityError при регистрации: %s", exc)
             raise UserAlreadyExistsError from exc
 
     async def create_google_user(self, user_info: GoogleUserData) -> User:
@@ -62,8 +65,10 @@ class UserRepository(IUserRepository):
         try:
             self.session.add(user)
             await self.session.flush()
+            logger.info("Google-пользователь создан: id=%s, email=%s", user.id, user_info.email)
             return user
         except IntegrityError as exc:
+            logger.warning("IntegrityError при создании Google-пользователя: %s", exc)
             raise UserAlreadyExistsError from exc
 
     async def link_google_account(self, user: User, user_info: GoogleUserData) -> User:
@@ -84,9 +89,11 @@ class UserRepository(IUserRepository):
         try:
             self.session.add(user)
             await self.session.flush()
+            logger.info("Google привязан к user_id=%s, provider=%s", user.id, user.auth_provider.value)
             return user
         except IntegrityError as exc:
             # Race condition: кто-то в ту же миллисекунду привязал этот google_id
+            logger.warning("IntegrityError при привязке Google: %s", exc)
             raise UserAlreadyExistsError from exc
 
     # ── Refresh-токены ───────────────────────────────────────────────
@@ -96,6 +103,7 @@ class UserRepository(IUserRepository):
         token = RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
         self.session.add(token)
         await self.session.flush()
+        logger.debug("Refresh-токен создан: id=%s, user_id=%s", token.id, user_id)
         return token
 
     async def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
@@ -104,6 +112,7 @@ class UserRepository(IUserRepository):
 
     async def delete_refresh_token(self, token_object: RefreshToken) -> None:
         """Удаляет refresh-токен из БД."""
+        logger.debug("Удаление refresh-токена: id=%s", token_object.id)
         await self.session.delete(token_object)
 
     async def enforce_session_limit(self, user_id: int, max_limit: int) -> None:
@@ -112,13 +121,12 @@ class UserRepository(IUserRepository):
         Вызывать ПОСЛЕ создания нового refresh-токена.
         После выполнения у пользователя останется не более ``max_limit`` активных токенов.
         """
-        await self._delete_stale_refresh_tokens(user_id)  # Сначала чистим истекшие/отозванные токены
         await self._delete_stale_refresh_tokens(user_id)
         tokens_to_delete = await self._get_token_ids_beyond_limit(user_id, max_limit)
         if tokens_to_delete:
+            logger.info("Лимит сессий: удаляем %d лишних токенов user_id=%s", len(tokens_to_delete), user_id)
         await self._delete_tokens_by_ids(tokens_to_delete)
 
-        tokens_to_delete = await self._get_token_ids_beyond_limit(user_id, max_limit)  # Список ID токенов сверх лимита
     async def delete_all_expired_refresh_tokens(self) -> int:
         """Глобальная чистка протухших и отозванных токенов (для Celery)."""
         query = delete(RefreshToken).where(
@@ -129,6 +137,7 @@ class UserRepository(IUserRepository):
         )
         result = await self.session.execute(query)
         count = result.rowcount or 0
+        logger.info("Глобальная чистка токенов: удалено %d", count)
         return count
 
     # ── Приватные методы ─────────────────────────────────────────────
@@ -154,8 +163,6 @@ class UserRepository(IUserRepository):
                 RefreshToken.revoked.is_(False),
                 RefreshToken.expires_at >= datetime.now(UTC),
             )
-            .order_by(RefreshToken.created_at.desc(), RefreshToken.id.desc())  # Сначала самые новые
-            .offset(limit_to_keep)  # Пропускаем допустимое количество
             .order_by(RefreshToken.created_at.desc(), RefreshToken.id.desc())
             .offset(limit_to_keep)
         )

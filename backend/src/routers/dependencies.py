@@ -1,10 +1,10 @@
-"""FastAPI-зависимости (Depends)."""
 """FastAPI-зависимости (Depends).
 
 Фабрики для Unit of Work и сервиса аутентификации,
 используемые через Dependency Injection в роутерах.
 """
 
+import logging
 
 from fastapi.params import Depends
 
@@ -14,6 +14,8 @@ from src.interfaces.unitofwork import IUserUnitOfWork
 from src.redis.auth_state import RedisAuthState
 from src.redis.config_redis import redis_client
 from src.service.auth import AuthService
+
+logger = logging.getLogger(__name__)
 
 
 async def get_uow() -> IUserUnitOfWork:

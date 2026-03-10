@@ -1,11 +1,14 @@
 """Создание и хэширование JWT-токенов (access / refresh)."""
 
 import hashlib
+import logging
 from datetime import datetime, timezone, timedelta
 
 import jwt
 
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class TokenHelper:
@@ -39,8 +42,8 @@ class TokenHelper:
             "exp": int((now + expires_delta).timestamp()),  # expiration — время истечения
             "iss": settings.app_name,       # issuer — имя приложения
         }
-        return jwt.encode(payload, settings.auth_jwt_secret_key, algorithm=settings.auth_jwt_algorithm)
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+        logger.debug("Создан %s-токен для user_id=%s", token_type, user_id)
         return token
 
 
