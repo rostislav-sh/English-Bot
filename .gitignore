@@ -69,3 +69,5 @@ pnpm-debug.log
 
 # Poetry
 poetry.lock
+
+help.md
