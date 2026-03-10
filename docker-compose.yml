@@ -8,7 +8,6 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-postgres}
-
     # Для отладки с хоста — раскомментировать:
 #    ports:
 #      - "6432:5432"
@@ -51,10 +50,11 @@ services:
     restart: "no"
 
     env_file:
-      - /.env
+      - .env
 
     environment:
       DB_HOST: db
+      DB_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
 
     depends_on:
@@ -74,11 +74,12 @@ services:
       - "8000:8000"
 
     env_file:
-      - /.env
+      - .env
 
     environment:
       # Внутренняя сеть Compose: сервисы доступны по именам.
       DB_HOST: db
+      DB_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
 
     depends_on:
@@ -107,10 +108,11 @@ services:
     restart: unless-stopped
 
     env_file:
-      - /.env
+      - .env
 
     environment:
       DB_HOST: db
+      DB_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -143,10 +145,11 @@ services:
     restart: unless-stopped
 
     env_file:
-      - /.env
+      - .env
 
     environment:
       DB_HOST: db
+      DB_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/1

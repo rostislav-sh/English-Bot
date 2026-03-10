@@ -18,7 +18,9 @@ from src.config import settings
 from src.database.config_db import Base
 # Обязательно импортируй ВСЕ модели, иначе Alembic их не увидит!
 from src.database.models import User
-
+print("\n" + "="*50)
+print(f"ALEMBIC ИДЕТ ПО URL: {settings.database_url}")
+print("="*50 + "\n")
 config = context.config
 
 # Настройка логгера
