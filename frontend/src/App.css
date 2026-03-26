@@ -277,6 +277,18 @@
   font-weight: 700;
 }
 
+.btn .btn__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn .btn__content span {
+  font-weight: 700;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -361,5 +373,9 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.google-icon {
+  display: block;
 }
 

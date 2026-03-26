@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { register, startGoogleOAuth } from '../api/auth'
 import { saveTokens } from '../auth/tokenStorage'
+import GoogleIcon from '../components/GoogleIcon'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -69,7 +70,10 @@ export default function RegisterPage() {
           type="button"
           onClick={() => startGoogleOAuth()}
         >
-          Continue with Google
+          <span className="btn__content">
+            <GoogleIcon size={24} />
+            <span>Continue with Google</span>
+          </span>
         </button>
       </form>
     </main>
