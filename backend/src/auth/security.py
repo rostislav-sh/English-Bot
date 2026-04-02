@@ -53,7 +53,7 @@ class Security:
 
     def _password_digest(self, password: str) -> bytes:
         """SHA-256 прехэш для устранения ограничения длины пароля в bcrypt."""
-        return hashlib.sha256(password.encode("utf-8")).digest()
+        return hashlib.sha256(password.encode("utf-8")).hexdigest().encode("ascii")
 
 
 security = Security()
