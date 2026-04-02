@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, String, ForeignKey, Boolean, func, text, Enum as SQLEnum
 
 from .config_db import Base
-
+from ..domain.entities import AuthProvider
 
 # ── Переиспользуемые аннотации для колонок ───────────────────────────
 
@@ -28,13 +28,6 @@ updated_at = Annotated[
         onupdate=lambda: datetime.datetime.now(timezone.utc),
     )
 ]
-
-
-class AuthProvider(str, enum.Enum):
-    """Способ аутентификации пользователя."""
-    LOCAL = "local"     # Регистрация через email + пароль
-    GOOGLE = "google"   # Вход только через Google
-    HYBRID = "hybrid"   # И пароль, и Google привязаны
 
 
 class User(Base):
