@@ -2,13 +2,22 @@
 
 from abc import ABC, abstractmethod
 
-from src.interfaces.repository import IUserRepository
+from src.interfaces.repositories.auth_uow import IRefreshTokenRepository
+from src.interfaces.repositories.user_uow import IUserRepository
 
 
-class IUserUnitOfWork(ABC):
-    """Интерфейс UoW — управляет транзакцией и предоставляет репозитории."""
+class IUnitOfWork(ABC):
+    """Координирует транзакцию над несколькими репозиториями."""
 
-    user_repo: IUserRepository
+    @property
+    @abstractmethod
+    def users(self) -> IUserRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def refresh_token(self) -> IRefreshTokenRepository:
+        ...
 
     @abstractmethod
     async def __aenter__(self):
@@ -28,4 +37,10 @@ class IUserUnitOfWork(ABC):
     @abstractmethod
     async def rollback(self):
         """Откатывает транзакцию."""
+        ...
+
+
+class IUnitOfWorkFactory(ABC):
+    @abstractmethod
+    def __call__(self) -> "IUnitOfWork":
         ...
