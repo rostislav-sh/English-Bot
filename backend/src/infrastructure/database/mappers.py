@@ -8,18 +8,18 @@
     update_model_from_entity — синхронизация изменений entity → model (для UPDATE)
 """
 from src.domain.entities import User, RefreshToken
-from .models import User as UserModel, RefreshToken as RefreshTokenModel
+from .models import UserModel, RefreshTokenModel
 
 
 # ════════════════════════════════════════
 #  USER
 # ════════════════════════════════════════
 
-def user_entity_to_model(entity: UserModel) -> User:
+def user_entity_to_model(entity: User) -> UserModel:
     """Новая ORM-модель из доменной сущности. Используется при INSERT.
 
     Для создания новых записей"""
-    return User(
+    return UserModel(
         email=entity.email,
         password_hash=entity.password_hash,
         google_id=entity.google_id,
@@ -30,20 +30,20 @@ def user_entity_to_model(entity: UserModel) -> User:
     )
 
 
-def user_model_to_entity(entity: UserModel) -> User:
+def user_model_to_entity(model: UserModel) -> User:
     """Доменная сущность из ORM-модели. Используется при SELECT.
 
     Для чтения из БД"""
     return User(
-        id=entity.id,
-        email=entity.email,
-        password_hash=entity.password_hash,
-        google_id=entity.google_id,
-        auth_provider=entity.auth_provider,
-        username=entity.username,
-        picture_url=entity.picture_url,
-        created_at=entity.created_at,
-        updated_at=entity.updated_at,
+        id=model.id,
+        email=model.email,
+        password_hash=model.password_hash,
+        google_id=model.google_id,
+        auth_provider=model.auth_provider,
+        username=model.username,
+        picture_url=model.picture_url,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )
 
 
@@ -67,17 +67,17 @@ def update_user_model_from_entity(model: UserModel, entity: User) -> None:
 #  REFRESH TOKEN
 # ════════════════════════════════════════
 
-def token_entity_to_model(model: RefreshTokenModel) -> RefreshToken:
+def token_entity_to_model(entity: RefreshToken) -> RefreshTokenModel:
     """Новая ORM-модель из доменной сущности. Используется при INSERT.
 
     Для создания новых записей"""
-    return RefreshToken(
-        user_id=model.id,
-        token_hash=model.token_hash,
-        expires_at=model.expires_at,
-        revoked=model.revoked,
-        created_at=model.created_at,
-        updated_at=model.updated_at,
+    return RefreshTokenModel(
+        user_id=entity.id,
+        token_hash=entity.token_hash,
+        expires_at=entity.expires_at,
+        revoked=entity.revoked,
+        created_at=entity.created_at,
+        updated_at=entity.updated_at,
     )
 
 
