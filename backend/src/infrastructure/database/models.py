@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, String, ForeignKey, Boolean, func, text, Enum as SQLEnum
 
 from .config_db import Base
-from ..domain.entities import AuthProvider
+from src.domain.entities import AuthProvider
 
 # ── Переиспользуемые аннотации для колонок ───────────────────────────
 
@@ -30,7 +30,7 @@ updated_at = Annotated[
 ]
 
 
-class User(Base):
+class UserModel(Base):
     """Модель пользователя."""
     __tablename__ = 'users'
 
@@ -52,13 +52,13 @@ class User(Base):
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
 
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list["RefreshTokenModel"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
 
 
-class RefreshToken(Base):
+class RefreshTokenModel(Base):
     """Хранение SHA-256 хэша refresh-токена в БД."""
     __tablename__ = 'refresh_tokens'
 
@@ -75,4 +75,4 @@ class RefreshToken(Base):
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
 
-    user: Mapped["User"] = relationship(back_populates="refresh_tokens")
+    user: Mapped["UserModel"] = relationship(back_populates="refresh_tokens")
