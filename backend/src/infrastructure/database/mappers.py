@@ -76,8 +76,7 @@ def token_entity_to_model(entity: RefreshToken) -> RefreshTokenModel:
         token_hash=entity.token_hash,
         expires_at=entity.expires_at,
         revoked=entity.revoked,
-        created_at=entity.created_at,
-        updated_at=entity.updated_at,
+        # id, created_at, updated_at — назначает БД, не передаём
     )
 
 
