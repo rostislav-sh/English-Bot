@@ -72,7 +72,7 @@ def token_entity_to_model(entity: RefreshToken) -> RefreshTokenModel:
 
     Для создания новых записей"""
     return RefreshTokenModel(
-        user_id=entity.id,
+        user_id=entity.user_id,
         token_hash=entity.token_hash,
         expires_at=entity.expires_at,
         revoked=entity.revoked,
