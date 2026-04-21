@@ -55,14 +55,13 @@ class TokenService:
 
         Вызывать внутри активного UoW-контекста."""
         token_hash = tokens.hash_session_token(token=raw_token)
-        stored = await self._uow.refresh_token.get_by_hash(token_hash=token_hash)
+        stored = await self._uow.tokens.get_by_hash(token_hash)
 
         if not stored or stored.revoked:
             logger.warning("Refresh-токен не найден или отозван")
             raise RefreshTokenNotFoundError
 
-        if stored.expires_at:
-            stored.revoked = True
+        if stored.is_expired:
             logger.info("Refresh-токен истёк: id=%s", stored.id)
             raise RefreshTokenLifetimeExpiredError
 
