@@ -107,7 +107,7 @@ class GoogleAuthService:
         """
         try:
             decode = await asyncio.to_thread(
-                security.decode_id_token, token=raw_id_token,
+                security.decode_google_token, token=raw_id_token,
             )
             user_info = GoogleUserData(**decode)
         except (ValueError, ValidationError) as error:
