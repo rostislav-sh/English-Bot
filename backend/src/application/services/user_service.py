@@ -10,7 +10,7 @@ from src.api.exceptions import (
     UserAlreadyExistsError,
 )
 from src.schemas.auth import GoogleUserData
-from src.application.services.pasword_service import PasswordService
+from src.application.services.password_service import PasswordService
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,16 @@ class UserService:
             # Защита от User Enumeration Attack — постоянное время ответа
             self._password_service.verify_with_timing_protection(password)
             logger.warning("Вход с несуществующим email: %s", email)
+            raise InvalidCredentialsError
+
+        # Google-only аккаунт — пароль не установлен, вход через пароль невозможен
+        if not user.password_hash:
+            self._password_service.verify_with_timing_protection(password)
+            logger.warning(
+                "Попытка входа по паролю для Google-аккаунта: user_id=%s provider=%s",
+                user.id,
+                user.auth_provider,
+            )
             raise InvalidCredentialsError
 
         if not self._password_service.verify(password, user.password_hash):
