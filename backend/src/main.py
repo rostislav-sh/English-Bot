@@ -15,14 +15,12 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.requests import Request
 
-from src.exceptions import AppError
+from src.api.exceptions import AppError
 from src.logging_config import setup_logging
-from src.routers import auth_router
+from src.api.routers import auth_router, user_router
+from src.api.limiter import limiter
 
 logger = logging.getLogger(__name__)
-
-# ── Rate Limiter ─────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -61,6 +59,10 @@ app.include_router(
     auth_router,
     tags=["Авторизация"],
 )
+app.include_router(
+    user_router,
+    tags=["Пользователь"]
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,4 +75,5 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-CSRF-Token"],
 )
