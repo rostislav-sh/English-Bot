@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# 1. Импортируем твои настройки и модели
+# Импортируем настройки и модели
 # (Обрати внимание на пути, Python должен видеть папку src)
 import sys
 from os.path import abspath, dirname
@@ -15,22 +15,22 @@ from os.path import abspath, dirname
 sys.path.insert(0, dirname(dirname(abspath(__file__))))  # Добавляем корень проекта в sys.path
 
 from src.config import settings
-from src.database.config_db import Base
+from src.infrastructure.database import Base
+from src.infrastructure.database import models as _db_models  # noqa: F401
 # Обязательно импортируй ВСЕ модели, иначе Alembic их не увидит!
-from src.database.models import User
-print("\n" + "="*50)
-print(f"ALEMBIC ИДЕТ ПО URL: {settings.database_url}")
-print("="*50 + "\n")
+# print("\n" + "="*50)
+# print(f"ALEMBIC ИДЕТ ПО URL: {settings.database_url}")
+# print("="*50 + "\n")
 config = context.config
 
 # Настройка логгера
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 2. Указываем метаданные твоих моделей
+# Указываем метаданные твоих моделей
 target_metadata = Base.metadata
 
-# 3. ПОДМЕНА URL: Берем URL из settings, а не из alembic.ini
+# ПОДМЕНА URL: Берем URL из settings, а не из alembic.ini
 # Pydantic URL может быть объектом, приводим к строке
 config.set_main_option("sqlalchemy.url", str(settings.database_url))
 
