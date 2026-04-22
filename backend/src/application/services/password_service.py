@@ -25,5 +25,5 @@ class PasswordService:
         """Верификация с защитой от User Enumeration (постоянное время ответа)."""
         return security.verify_password(
             password=password,
-            hashed_password=settings.password_hash,
+            hashed_password=settings.fake_password_hash,
         )
