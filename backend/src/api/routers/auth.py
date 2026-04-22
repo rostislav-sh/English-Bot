@@ -4,60 +4,63 @@
 """
 
 import logging
+from typing import Annotated
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Request, Response, status, HTTPException
 from fastapi.params import Depends, Cookie
 from fastapi.responses import RedirectResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.auth.cookies import set_token_cookies, set_cookies_google_oauth_state
-from src.config import settings
-from src.exceptions import AppError
-from src.interfaces import AuthServiceProtocol
-from src.routers.dependencies import get_user_service
-from src.routers.schemas.auth import (
-    Authentication, RegisterOut, RefreshRequest,
+from src.infrastructure.auth.cookies import (
+    set_token_cookies_auth,
+    set_cookies_google_oauth_state,
+    set_token_cookies_csrf,
+    generate_csrf_token,
 )
-from src.schemas.auth import TokenPair
+from src.config import settings
+from src.api.exceptions import AppError
+from src.application.interfaces import AuthServiceProtocol
+from src.api.dependencies import get_auth_service, verify_csrf_token
+from src.api.schemas.auth import (
+    Authentication, UserOut, AuthenticationUsername,
+)
+from src.api.limiter import limiter
 
 logger = logging.getLogger(__name__)
-
-# Rate-limiter (общий с main.py через app.state)
-limiter = Limiter(key_func=get_remote_address)
-
 router = APIRouter()
 
 
 @router.post(
     "/register",
     summary="Регистрация пользователя",
-    response_model=RegisterOut,
+    response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
 )
 @limiter.limit("10/minute")
 async def register(
         request: Request,
-        data: Authentication,
+        data: AuthenticationUsername,
         response: Response,
-        service: AuthServiceProtocol = Depends(get_user_service),
+        service: AuthServiceProtocol = Depends(get_auth_service),
 ):
     """Регистрация нового пользователя и выдача пары токенов."""
     logger.info("POST /register email=%s", data.email)
-    user, pair = await service.register(email=data.email, password=data.password)
-    set_token_cookies(response, pair.access_token, pair.refresh_token)
-    return RegisterOut(
-        id=user.id,
+    user, pair = await service.register(email=data.email, password=data.password, username=data.username)
+    set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
+    csrf_token = generate_csrf_token()
+    set_token_cookies_csrf(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token
+    return UserOut(
+        username=user.username,
         email=user.email,
-        access_token=pair.access_token,
-        refresh_token=pair.refresh_token,
     )
 
 
 @router.post(
     "/login",
     summary="Вход через JWT (access + refresh)",
-    response_model=TokenPair,
+    response_model=UserOut,
     status_code=status.HTTP_200_OK,
 )
 @limiter.limit("10/minute")
@@ -65,30 +68,74 @@ async def login(
         request: Request,
         data: Authentication,
         response: Response,
-        service: AuthServiceProtocol = Depends(get_user_service),
-) -> TokenPair:
+        service: AuthServiceProtocol = Depends(get_auth_service),
+) -> UserOut:
     """Проверяет учётные данные и возвращает пару токенов (access + refresh)."""
     logger.info("POST /login email=%s", data.email)
-    _, pair = await service.login(email=data.email, password=data.password)
-    set_token_cookies(response, pair.access_token, pair.refresh_token)
-    return pair
+    user, pair = await service.login(email=data.email, password=data.password)
+    set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
+    csrf_token = generate_csrf_token()
+    set_token_cookies_csrf(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token
+    return UserOut(username=user.username, email=user.email)
 
 
 @router.post(
     "/token/refresh",
     summary="Обновление токенов JWT (access + refresh)",
-    response_model=TokenPair,
+    dependencies=[Depends(verify_csrf_token)],
 )
 async def refresh(
-        data: RefreshRequest,
         response: Response,
-        service: AuthServiceProtocol = Depends(get_user_service),
-) -> TokenPair:
+        refresh_token: Annotated[str | None, Cookie(alias=settings.refresh_cookie_name)] = None,
+        service: AuthServiceProtocol = Depends(get_auth_service),
+) -> dict[str, str]:
     """Обновление пары токенов по refresh токену."""
     logger.debug("POST /token/refresh")
-    _, pair = await service.refresh(data.refresh_token)
-    set_token_cookies(response, pair.access_token, pair.refresh_token)
-    return pair
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token cookie missing")
+    _, pair = await service.refresh(refresh_token)
+    set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
+    csrf_token = generate_csrf_token()
+    set_token_cookies_csrf(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token
+    return {"message": "success"}
+
+
+@router.post(
+    "/logout",
+    summary="Выход (инвалидация refresh токена)",
+)
+async def logout(
+        response: Response,
+        refresh_token: Annotated[str | None, Cookie(alias=settings.refresh_cookie_name)] = None,
+        service: AuthServiceProtocol = Depends(get_auth_service),
+) -> dict[str, str]:
+    """Инвалидирует рефреш-токен и удаляет куки."""
+    logger.info("POST /logout")
+    if refresh_token:
+        try:
+            await service.logout(refresh_token)
+        except AppError as exc:
+            logger.warning("Ошибка при отзыве токена: %s", exc)
+
+    response.delete_cookie(
+        key=settings.access_cookie_name,
+        path=settings.access_cookie_path,
+        domain=settings.domain,
+    )
+    response.delete_cookie(
+        key=settings.refresh_cookie_name,
+        path=settings.refresh_cookie_path,
+        domain=settings.domain,
+    )
+    response.delete_cookie(
+        key=settings.csrf_cookie_name,
+        path=settings.csrf_cookie_path,
+        domain=settings.domain,
+    )
+    
+    return {"message": "Успешный выход из системы"}
 
 
 @router.get(
@@ -96,7 +143,7 @@ async def refresh(
     summary="Редирект на Google OAuth consent screen",
 )
 async def get_google_login_url(
-        service: AuthServiceProtocol = Depends(get_user_service),
+        service: AuthServiceProtocol = Depends(get_auth_service),
 ) -> RedirectResponse:
     """Генерирует URL для редиректа пользователя на Google OAuth."""
     logger.info("GET /auth/google")
@@ -120,7 +167,7 @@ async def google_auth_callback(
         state: str | None = None,
         error: str | None = None,
         google_oauth_state: str | None = Cookie(default=None),
-        service: AuthServiceProtocol = Depends(get_user_service),
+        service: AuthServiceProtocol = Depends(get_auth_service),
 ) -> RedirectResponse:
     """Обрабатывает GET-редирект от Google: проверяет state, обменивает code на токены,
     ставит JWT-куки и редиректит пользователя на фронтенд."""
@@ -154,7 +201,10 @@ async def google_auth_callback(
     # Успех — редирект на фронтенд с JWT-куками
     response = RedirectResponse(url=base, status_code=status.HTTP_302_FOUND)
     response.delete_cookie(key="google_oauth_state", path="/", domain=settings.domain)
-    set_token_cookies(response, pair.access_token, pair.refresh_token)
+    set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
+    csrf_token = generate_csrf_token()
+    set_token_cookies_csrf(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token
 
     logger.info("Проверка подлинности Google OAuth завершена. Редирект на фронтенд.")
     return response
