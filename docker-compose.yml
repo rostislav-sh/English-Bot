@@ -126,7 +126,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "celery -A src.tasks.celery_config:celery_app inspect ping --timeout 5",
+          "celery -A src.infrastructure.tasks.celery_config,:celery_app inspect ping --timeout 5",
         ]
       interval: 30s
       timeout: 10s
@@ -136,7 +136,7 @@ services:
     command:
       [
         "celery",
-        "-A", "src.tasks.celery_config:celery_app",
+        "-A", "src.infrastructure.tasks.celery_config,:celery_app",
         "worker",
         "--loglevel=info",
         "--concurrency=2",
@@ -158,7 +158,7 @@ services:
     command:
       [
         "celery",
-        "-A", "src.tasks.celery_config:celery_app",
+        "-A", "src.infrastructure.tasks.celery_config,:celery_app",
         "beat",
         "--loglevel=info",
       ]
