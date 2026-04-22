@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import secrets
 from datetime import datetime, timezone, timedelta
 
 import jwt
@@ -41,6 +42,7 @@ class TokenHelper:
             "iat": int(now.timestamp()),    # issued-at — время выпуска
             "exp": int((now + expires_delta).timestamp()),  # expiration — время истечения
             "iss": settings.app_name,       # issuer — имя приложения
+            "jti": secrets.token_hex(16),
         }
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
         logger.debug("Создан %s-токен для user_id=%s", token_type, user_id)
