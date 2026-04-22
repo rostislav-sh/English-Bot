@@ -8,7 +8,6 @@ from sqlalchemy.engine import URL
 
 # Разрешение имени файла .env относительно каталога backend/ для локальных запусков
 _env_path = Path(__file__).resolve().parents[2] / ".env"
-print(_env_path)
 
 
 class Settings(BaseSettings):
@@ -35,11 +34,15 @@ class Settings(BaseSettings):
 
     access_cookie_name: str = Field(validation_alias="ACCESS_COOKIE_NAME")
     refresh_cookie_name: str = Field(validation_alias="REFRESH_COOKIE_NAME")
+    csrf_cookie_name: str = Field(validation_alias="CSRF_COOKIE_NAME")
+    auth_session_cookie_httponly: bool = Field(validation_alias="AUTH_SESSION_COOKIE_HTTPONLY")
+    csrf_session_cookie_httponly: bool = Field(validation_alias="CSRF_SESSION_COOKIE_HTTPONLY")
     session_cookie_secure: bool = Field(validation_alias="SESSION_COOKIE_SECURE")
-    session_cookie_httponly: bool = Field(validation_alias="SESSION_COOKIE_HTTPONLY")
     samesite: Literal["lax", "strict", "none"] = Field(validation_alias="SAMESITE")
-    domain: str | None = Field(default=None, validation_alias="DOMAIN")
-    path: str = Field(validation_alias="COOKIE_PATH")
+    domain: str | None = Field(validation_alias="DOMAIN")
+    access_cookie_path: str = Field(validation_alias="ACCESS_COOKIE_PATH")
+    refresh_cookie_path: str = Field(validation_alias="REFRESH_COOKIE_PATH")
+    csrf_cookie_path: str = Field(validation_alias="CSRF_COOKIE_PATH")
 
     fake_password_hash: str = Field(validation_alias="FAKE_PASSWORD_HASH")
 
