@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from src.config import settings
 from src.infrastructure.auth.security import security
-from src.application.interfaces.redis_auth_state import RedisAuthState
+from src.application.interfaces.redis import RedisAuthState
 from src.schemas.auth import GoogleUserData
 from src.api.exceptions import (
     GoogleIdTokenNotFoundError,

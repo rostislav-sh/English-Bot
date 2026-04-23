@@ -21,8 +21,6 @@ from .mappers import (
 logger = logging.getLogger(__name__)
 
 
-
-
 class SQLAlchemyUserRepository(SQLAlchemyBaseRepository[User], IUserRepository):
     """
     Репозиторий пользователей.

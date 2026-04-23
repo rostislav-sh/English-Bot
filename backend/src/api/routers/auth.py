@@ -9,8 +9,6 @@ from typing import Annotated
 from fastapi import APIRouter, Request, Response, status, HTTPException
 from fastapi.params import Depends, Cookie
 from fastapi.responses import RedirectResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from src.infrastructure.auth.cookies import (
     set_token_cookies_auth,

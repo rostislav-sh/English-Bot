@@ -5,4 +5,4 @@
 в celery_config.py — ручные импорты здесь не нужны.
 """
 
-from src.tasks.celery_config import celery_app  # noqa: F401
+from src.infrastructure.tasks.celery_config import celery_app  # noqa: F401

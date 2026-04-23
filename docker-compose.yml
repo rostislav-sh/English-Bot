@@ -49,8 +49,8 @@ services:
       POSTGRES_DB: ${DB_NAME:-postgres}
 
     # Для отладки с хоста — раскомментировать:
-    # ports:
-    #   - "6432:5432"
+    ports:
+      - "6432:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -68,8 +68,8 @@ services:
     restart: unless-stopped
 
     # Для отладки с хоста — раскомментировать:
-    # ports:
-    #   - "6379:6379"
+    ports:
+      - "6379:6379"
 
     volumes:
       - redis_data:/data
@@ -126,7 +126,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "celery -A src.infrastructure.tasks.celery_config,:celery_app inspect ping --timeout 5",
+          "celery -A src.infrastructure.tasks.celery_config:celery_app inspect ping --timeout 5",
         ]
       interval: 30s
       timeout: 10s
@@ -136,7 +136,7 @@ services:
     command:
       [
         "celery",
-        "-A", "src.infrastructure.tasks.celery_config,:celery_app",
+        "-A", "src.infrastructure.tasks.celery_config:celery_app",
         "worker",
         "--loglevel=info",
         "--concurrency=2",

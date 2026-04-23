@@ -23,8 +23,8 @@ celery_app.conf.update(
     # Celery worker при старте импортирует эти модули —
     # задачи регистрируются, расписание применяется.
     include=[
-        "src.tasks.jobs.token_cleanup",
-        "src.tasks.schedule",
+        "src.infrastructure.tasks.jobs.token_cleanup",
+        "src.infrastructure.tasks.schedule",
     ],
 )
 

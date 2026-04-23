@@ -18,9 +18,9 @@ from src.config import settings
 from src.infrastructure.database import Base
 from src.infrastructure.database import models as _db_models  # noqa: F401
 # Обязательно импортируй ВСЕ модели, иначе Alembic их не увидит!
-# print("\n" + "="*50)
-# print(f"ALEMBIC ИДЕТ ПО URL: {settings.database_url}")
-# print("="*50 + "\n")
+print("\n" + "="*50)
+print(f"ALEMBIC ИДЕТ ПО URL: {settings.database_url}")
+print("="*50 + "\n")
 config = context.config
 
 # Настройка логгера

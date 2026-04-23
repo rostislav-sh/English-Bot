@@ -4,7 +4,7 @@ import logging
 
 from redis.asyncio import Redis
 
-from src.exceptions import InvalidOAuthStateError
+from src.api.exceptions import InvalidOAuthStateError
 
 logger = logging.getLogger(__name__)
 

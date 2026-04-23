@@ -2,7 +2,7 @@
 
 from celery.schedules import crontab
 
-from src.tasks.celery_config import celery_app
+from src.infrastructure.tasks.celery_config import celery_app
 
 celery_app.conf.beat_schedule = {
     "daily-token-cleanup": {

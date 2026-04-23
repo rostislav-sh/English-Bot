@@ -14,9 +14,6 @@ from src.infrastructure.database.repositories import SQLAlchemyUserRepository, S
 logger = logging.getLogger(__name__)
 
 
-
-
-
 class SQLAlchemyUnitOfWork(IUnitOfWork):
     """
     Конкретная реализация UoW.

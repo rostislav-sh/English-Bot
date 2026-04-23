@@ -20,4 +20,5 @@ dependencies = [
     "aiohttp>=3.13.3",
     "google>=3.0.0",
     "requests>=2.32.0",
+    "celery-types>=0.26.0",
 ]

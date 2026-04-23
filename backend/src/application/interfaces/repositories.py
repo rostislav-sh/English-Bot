@@ -4,7 +4,6 @@ from src.application.interfaces.base_repository import IBaseRepository
 from src.domain.entities import User, RefreshToken
 
 
-
 class IUserRepository(IBaseRepository[User], ABC):
     @abstractmethod
     async def get_by_email(self, email: str) -> User | None:
