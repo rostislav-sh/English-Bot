@@ -11,7 +11,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
 )
 
-from .config_db import Base
+from src.infrastructure.database.models.base import Base
 from src.domain.entities import AuthProvider
 
 # ── Переиспользуемые аннотации для колонок ───────────────────────────

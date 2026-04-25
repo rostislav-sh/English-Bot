@@ -1,2 +1,2 @@
 """Пакет слоя базы данных (ORM-модели, репозиторий, UoW)."""
-from .config_db import Base
+from .models.base import Base
