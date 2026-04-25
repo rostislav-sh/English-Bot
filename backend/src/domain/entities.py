@@ -1,12 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum
 
-class AuthProvider(str, Enum):
-    """Способ аутентификации пользователя."""
-    LOCAL = "local"  # Регистрация через email + пароль
-    GOOGLE = "google"  # Вход только через Google
-    HYBRID = "hybrid"  # И пароль, и Google привязаны
+from .enums import AuthProvider
 
 
 @dataclass

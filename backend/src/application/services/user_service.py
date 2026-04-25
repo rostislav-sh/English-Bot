@@ -3,7 +3,7 @@
 import logging
 
 from src.application.interfaces.unitofwork import IUnitOfWork
-from src.domain.entities import User, AuthProvider
+from src.domain import User, AuthProvider
 from src.api.exceptions import (
     InvalidCredentialsError,
     UserNotFoundError,

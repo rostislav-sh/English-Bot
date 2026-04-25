@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 
 from src.infrastructure.database.models.base import Base
-from src.domain.entities import AuthProvider
+from src.domain.enums import AuthProvider
 
 # ── Переиспользуемые аннотации для колонок ───────────────────────────
 
