@@ -1,6 +1,29 @@
 """Базовый класс для всех моделей"""
 
-from sqlalchemy.orm import DeclarativeBase
+import datetime
+from datetime import timezone
+from typing import Annotated
+
+from sqlalchemy import DateTime, func
+from sqlalchemy.orm import DeclarativeBase, mapped_column
+
+# ── Переиспользуемые аннотации для колонок ───────────────────────────
+
+int_pk = Annotated[int, mapped_column(primary_key=True)]
+
+created_at = Annotated[
+    datetime.datetime,
+    mapped_column(DateTime(timezone=True), server_default=func.now())
+]
+
+updated_at = Annotated[
+    datetime.datetime,
+    mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=lambda: datetime.datetime.now(timezone.utc),
+    )
+]
 
 
 class Base(DeclarativeBase):

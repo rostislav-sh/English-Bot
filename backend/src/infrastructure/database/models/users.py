@@ -1,36 +1,20 @@
 """ORM-модели приложения (SQLAlchemy declarative)."""
 
 import datetime
-from datetime import timezone
-from typing import Annotated
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .attempts import TestAttemptModel
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
     DateTime, String, ForeignKey, Boolean,
-    func, text, Index,
+    text, Index,
     Enum as SQLEnum,
 )
 
-from src.infrastructure.database.models.base import Base
-from src.domain.enums import AuthProvider
-
-# ── Переиспользуемые аннотации для колонок ───────────────────────────
-
-int_pk = Annotated[int, mapped_column(primary_key=True)]
-
-created_at = Annotated[
-    datetime.datetime,
-    mapped_column(DateTime(timezone=True), server_default=func.now())
-]
-
-updated_at = Annotated[
-    datetime.datetime,
-    mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=lambda: datetime.datetime.now(timezone.utc),
-    )
-]
+from src.infrastructure.database.models.base import Base, int_pk, created_at, updated_at
+from src.domain.entities import AuthProvider
 
 
 class UserModel(Base):
@@ -53,6 +37,10 @@ class UserModel(Base):
     updated_at: Mapped[updated_at]
 
     refresh_tokens: Mapped[list["RefreshTokenModel"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    test_attempts: Mapped[list["TestAttemptModel"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )
