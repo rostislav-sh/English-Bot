@@ -1,7 +1,7 @@
-from src.infrastructure.database.models.users import UserModel, RefreshTokenModel
-from src.infrastructure.database.models.base import Base
-from src.infrastructure.database.models.tests import TopicModel, TestModel, QuestionModel
-from src.infrastructure.database.models.attempts import TestAttemptModel, AttemptAnswerModel
+from .users import UserModel, RefreshTokenModel
+from .base import Base
+from .tests import TopicModel, TestModel, QuestionModel
+from .attempts import TestAttemptModel, AttemptAnswerModel
 
 __all__ = [
     "UserModel", 
