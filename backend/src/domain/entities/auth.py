@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from .enums import AuthProvider
+from src.domain.enums import AuthProvider
 
 
 @dataclass
