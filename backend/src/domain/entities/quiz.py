@@ -109,3 +109,19 @@ class TestAttempt:
     @property
     def is_perfect(self) -> bool:
         return self.score == self.total_questions
+
+
+@dataclass(slots=True)
+class MonthlyStats:
+    """Агрегированная статистика юзера за один месяц."""
+    month: datetime           # начало месяца (через DATE_TRUNC)
+    attempts_count: int       # сколько тестов прошёл
+    total_score: int          # суммарно правильных ответов
+    total_questions: int      # суммарно вопросов (для расчёта accuracy)
+
+    @property
+    def accuracy(self) -> float:
+        """Точность за месяц в процентах."""
+        if self.total_questions == 0:
+            return 0.0
+        return round(self.total_score / self.total_questions * 100, 1)
