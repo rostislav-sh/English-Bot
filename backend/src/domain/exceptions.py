@@ -65,6 +65,34 @@ class RefreshTokenExpiredError(DomainError):
 
 
 # ════════════════════════════════════════════════════════════════════
+#  Google OAuth
+# ════════════════════════════════════════════════════════════════════
+
+class GoogleIdTokenNotFoundError(DomainError):
+    message = "Google не вернул id_token в ответе."
+
+
+class GoogleAuthorizationCodeError(DomainError):
+    message = "Неверный или просроченный код авторизации Google."
+
+
+class GoogleTokenExchangeTimeoutError(DomainError):
+    message = "Тайм-аут при обращении к Google."
+
+
+class GoogleDataReadError(DomainError):
+    message = "Ошибка чтения данных Google."
+
+
+class GoogleEmailNotVerifiedError(DomainError):
+    message = "Email в аккаунте Google не подтверждён."
+
+
+class InvalidOAuthStateError(DomainError):
+    message = "Недействительный или истёкший OAuth state."
+
+
+# ════════════════════════════════════════════════════════════════════
 #  Ошибки репозитория (программные баги, не бизнес-логика)
 # ════════════════════════════════════════════════════════════════════
 
