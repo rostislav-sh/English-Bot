@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class TokenPair(BaseModel):
     model_config = ConfigDict(frozen=True)
     access_token: str
-    token_type: str
+    refresh_token: str
     token_type: str = "bearer"
 
 

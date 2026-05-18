@@ -8,16 +8,9 @@ from datetime import datetime, timezone, timedelta
 import jwt
 
 from src.config import settings
+from src.application.interfaces.tokens import TokenInvalidError, TokenExpiredError
 
 logger = logging.getLogger(__name__)
-
-
-class TokenExpiredError(ValueError):
-    """JWT истёк."""
-
-
-class TokenInvalidError(ValueError):
-    """JWT невалиден или неверного типа."""
 
 
 class TokenHelper:
