@@ -3,15 +3,18 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class TokenPair(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class FrozenDTO(BaseModel):
+    """База для всех application DTO."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class TokenPair(FrozenDTO):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
 
-class GoogleUserData(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class GoogleUserData(FrozenDTO):
     google_id: str
     email: str
     email_verified: bool
@@ -19,21 +22,18 @@ class GoogleUserData(BaseModel):
     picture: str | None = None
 
 
-class GoogleAuthorizationURL(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class GoogleAuthorizationURL(FrozenDTO):
     url: str
     state: str
 
 
-class RegisterCommand(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class RegisterCommand(FrozenDTO):
     email: str
     password: str
     username: str
 
 
-class LoginCommand(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class LoginCommand(FrozenDTO):
     email: str
     password: str
 
