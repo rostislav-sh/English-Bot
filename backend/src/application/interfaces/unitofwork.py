@@ -2,7 +2,9 @@
 
 from abc import ABC, abstractmethod
 
-from src.application.interfaces.repositories import IUserRepository, IRefreshTokenRepository
+from src.application.interfaces.repositories import (
+    IUserRepository, IRefreshTokenRepository, ITopicRepository, ITestRepository, IAttemptRepository
+)
 
 
 class IUnitOfWork(ABC):
@@ -15,7 +17,22 @@ class IUnitOfWork(ABC):
 
     @property
     @abstractmethod
-    def refresh_token(self) -> IRefreshTokenRepository:
+    def refresh_tokens(self) -> IRefreshTokenRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def topics(self) -> ITopicRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def tests(self) -> ITestRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def attempts(self) -> IAttemptRepository:
         ...
 
     @abstractmethod
@@ -40,6 +57,13 @@ class IUnitOfWork(ABC):
 
 
 class IUnitOfWorkFactory(ABC):
+    """
+    Фабрика UoW.
+
+    Используется в DI-слое. Каждый вызов возвращает новый UoW
+    с собственной изолированной сессией — можно безопасно создавать
+    UoW на каждый HTTP-запрос/Celery-таску.
+    """
     @abstractmethod
     def __call__(self) -> "IUnitOfWork":
         ...
