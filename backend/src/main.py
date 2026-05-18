@@ -10,12 +10,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+
 from starlette.requests import Request
 
-from src.api.exceptions import AppError
+from src.api.exception_handlers import register_exception_handlers
 from src.logging_config import setup_logging
 from src.api.routers import auth_router, user_router
 from src.api.limiter import limiter
@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# добавляем статусы ошибок к domain/error
+register_exception_handlers(app)
 
 # Подключаем rate-limiter к приложению
 app.state.limiter = limiter
