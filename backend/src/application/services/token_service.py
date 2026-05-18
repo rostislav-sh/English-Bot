@@ -42,7 +42,7 @@ class TokenService:
             token_hash=refresh_hash,
             expires_at=expires_at,
         )
-        await self._uow.refresh_token.add(token_entity)
+        await self._uow.refresh_tokens.add(token_entity)
         await self._cleanup_session(user_id=user_id)
 
         logger.debug("Выданы токены: user_id=%s", user_id)
@@ -68,7 +68,7 @@ class TokenService:
 
         # Ищем в БД по hash
         token_hash = tokens.hash_session_token(raw_token)
-        stored = await self._uow.refresh_token.get_by_hash(token_hash)
+        stored = await self._uow.refresh_tokens.get_by_hash(token_hash)
 
         if not stored or stored.revoked:
             logger.warning("Refresh-токен не найден или отозван")
@@ -83,7 +83,7 @@ class TokenService:
 
     async def revoke_all(self, user_id: int) -> int:
         """Отзывает все токены пользователя."""
-        count = await self._uow.refresh_token.revoke_all_for_user(user_id=user_id)
+        count = await self._uow.refresh_tokens.revoke_all_for_user(user_id=user_id)
         logger.info("Отозвано токенов: user_id=%s count=%d", user_id, count)
         return count
 
@@ -91,8 +91,8 @@ class TokenService:
 
     async def _cleanup_session(self, user_id: int) -> None:
         """Чистка сессий после выдачи нового токена."""
-        await self._uow.refresh_token.delete_stale_for_user(user_id)
-        await self._uow.refresh_token.delete_oldest_beyond_limit(
+        await self._uow.refresh_tokens.delete_stale_for_user(user_id)
+        await self._uow.refresh_tokens.delete_oldest_beyond_limit(
             user_id=user_id,
             keep=settings.max_sessions_per_user,
         )
