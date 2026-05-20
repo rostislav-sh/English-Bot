@@ -5,8 +5,10 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TypeVar, Callable
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.interfaces.exceptions import UniqueViolationError
 from src.application.interfaces.repositories import IBaseRepository
 from src.domain.exceptions import EntityNotFoundError, MissingEntityIdError
 
@@ -116,7 +118,19 @@ class SQLAlchemyBaseRepository(IBaseRepository[T_Entity], ABC):
         """
         model = self._to_model(entity)
         self._session.add(model)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as e:
+            entity_name = type(entity).__name__
+            logger.warning(
+                "Конфликт ограничений БД при добавлении %s: %s",
+                entity_name, e.orig
+            )
+            # Переводим инфраструктурную ошибку в понятную для Application слоя
+            raise UniqueViolationError(
+                f"Нарушение уникальности при сохранении {entity_name}."
+            ) from e
+
         result = self._track(model)
         logger.debug(
             "add: %s id=%s",
