@@ -63,9 +63,9 @@ class TokenService:
         try:
             self._tokens.decode_refresh_token(raw_token)
         except TokenExpiredError as e:
-            raise RefreshTokenExpiredError from e
+            raise RefreshTokenExpiredError() from e
         except TokenInvalidError as e:
-            raise RefreshTokenNotFoundError from e
+            raise RefreshTokenNotFoundError() from e
 
         # Ищем в БД по hash
         token_hash = self._tokens.hash_session_token(raw_token)
@@ -73,12 +73,12 @@ class TokenService:
 
         if not stored or stored.revoked:
             logger.warning("Refresh-токен не найден или отозван")
-            raise RefreshTokenNotFoundError
+            raise RefreshTokenNotFoundError()
 
         # Проверяем expires_at из БД — источник истины для отзыва
         if stored.is_expired:
             logger.info("Refresh-токен истёк: id=%s", stored.id)
-            raise RefreshTokenExpiredError
+            raise RefreshTokenExpiredError()
 
         return stored
 
@@ -105,7 +105,7 @@ class TokenService:
         )
 
     @staticmethod
-    def _refresh_expiry(self) -> datetime:
+    def _refresh_expiry() -> datetime:
         return datetime.now(timezone.utc) + timedelta(
             days=settings.refresh_token_expire_days
         )
