@@ -12,6 +12,11 @@ class TokenInvalidError(ValueError):
 
 
 class ITokenProvider(Protocol):
+    """Абстракция над JWT-провайдером.
+
+    Скрывает конкретную библиотеку (PyJWT / python-jose / ...).
+    Сервисы зависят только от этого Protocol.
+    """
     def hash_session_token(self, token: str) -> str:
         """Возвращает SHA-256 хэш токена для безопасного хранения в БД."""
         ...

@@ -9,12 +9,14 @@ class FrozenDTO(BaseModel):
 
 
 class TokenPair(FrozenDTO):
+    """Пара токенов, выдаваемая при успешной аутентификации."""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
 
 class GoogleUserData(FrozenDTO):
+    """Данные пользователя, извлечённые из верифицированного Google ID-токена."""
     google_id: str
     email: str
     email_verified: bool
@@ -23,17 +25,19 @@ class GoogleUserData(FrozenDTO):
 
 
 class GoogleAuthorizationURL(FrozenDTO):
+    """google url для аутентификации"""
     url: str
     state: str
 
 
 class RegisterCommand(FrozenDTO):
+    """Входные данные при регистрации"""
     email: str
     password: str
     username: str
 
 
 class LoginCommand(FrozenDTO):
+    """Входные данные при логине"""
     email: str
     password: str
-
