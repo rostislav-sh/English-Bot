@@ -16,7 +16,7 @@ uow_factory = SQLAlchemyUnitOfWorkFactory(session_factory)
 async def _run_cleanup(uow: IUnitOfWork) -> int:
     """Асинхронная логика очистки, зависящая только от абстракции IUserUnitOfWork."""
     async with uow:
-        deleted_count = await uow.refresh_token.delete_expired_global()
+        deleted_count = await uow.refresh_tokens.delete_expired_global()
         await uow.commit()
         return deleted_count
 
