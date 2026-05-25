@@ -30,7 +30,7 @@ class Security:
         digest = self._password_digest(password)
         return bcrypt.checkpw(digest, hashed_password.encode("utf-8"))
 
-    def decode_google_token(self, token: str) -> dict:
+    def decode_google_token(self, token: str, google_client_id: str) -> dict:
         """Верифицирует подпись Google ID-токена и возвращает его payload.
 
         Проверяет:
@@ -46,7 +46,7 @@ class Security:
         decoded = google_id_token.verify_oauth2_token(
             token,
             self._google_request,
-            audience=settings.google_client_id,
+            audience=google_client_id,
         )
         logger.debug("Google ID-токен успешно верифицирован, sub=%s", decoded.get("sub"))
         return decoded

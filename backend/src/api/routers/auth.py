@@ -17,7 +17,7 @@ from src.infrastructure.auth.cookies import (
     generate_csrf_token,
 )
 from src.config import settings
-from src.api.exceptions import AppError
+from src.api.exception_handlers import AppError
 from src.application.interfaces import AuthServiceProtocol
 from src.api.dependencies import get_auth_service, verify_csrf_token
 from src.api.schemas.auth import (

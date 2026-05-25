@@ -2,19 +2,16 @@
 
 import logging
 
-from sqlalchemy.util import await_only
-
 from src.application.dto.auth import RegisterCommand
 from src.application.interfaces.exceptions import UniqueViolationError
 from src.application.interfaces.unitofwork import IUnitOfWork
 from src.domain import User, AuthProvider
-from src.api.exception_handlers import (
+from src.domain.exceptions import (
     InvalidCredentialsError,
     UserNotFoundError,
     UserAlreadyExistsError,
 )
-from src.schemas.auth import GoogleUserData
-from src.application.services.password_service import PasswordService
+from src.application.services import PasswordService
 
 logger = logging.getLogger(__name__)
 

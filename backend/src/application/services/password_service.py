@@ -24,21 +24,19 @@ class PasswordService:
     Поэтому для хеширования паролей потоки в Python работают по-настоящему параллельно и не мешают друг другу!
     """
     async def hash(self, password: str) -> str:
-        return await asyncio.to_thread(security.hash_password(password))
+        return await asyncio.to_thread(security.hash_password, password)
 
     async def verify(self, password: str, hashed: str) -> bool:
         return await asyncio.to_thread(
-            security.verify_password(
-                password=password,
-                hashed_password=hashed,
-            )
+            security.verify_password,
+            password,
+            hashed,
         )
 
     async def verify_with_timing_protection(self, password: str) -> bool:
         """Верификация с защитой от User Enumeration (постоянное время ответа)."""
         return await asyncio.to_thread(
-            security.verify_password(
-                password=password,
-                hashed_password=settings.fake_password_hash,
-            )
+            security.verify_password,
+            password,
+            settings.fake_password_hash,
         )

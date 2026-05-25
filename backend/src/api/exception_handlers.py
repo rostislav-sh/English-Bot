@@ -44,7 +44,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         status = _STATUS_MAP.get(type(exc), 400)
         return JSONResponse(status_code=status, content={"message": exc.message})
 
-    @app.exception_handler(InvalidCredentialsError)
+    @app.exception_handler(RepositoryError)
     async def _repo_handler(_: Request, exc: RepositoryError) -> JSONResponse:
         logger.exception("Repository error: %s", exc)
         return JSONResponse(status_code=500, content={"message": "Internal error"})

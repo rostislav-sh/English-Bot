@@ -16,11 +16,14 @@ from src.infrastructure.database.unitofwork import SQLAlchemyUnitOfWorkFactory
 from src.infrastructure.database.config_db import session_factory
 from src.infrastructure.redis.auth_state import RedisAuthState
 from src.infrastructure.redis.config_redis import redis_client
-from src.application.services.auth_service import AuthService
-from src.application.services.user_service import UserService
-from src.application.services.token_service import TokenService
-from src.application.services.google_auth_service import GoogleAuthService
-from src.application.services.password_service import PasswordService
+from src.infrastructure.http.http_client import get_http_client
+from src.application.services import (
+    AuthService,
+    UserService,
+    TokenService,
+    GoogleAuthService,
+    PasswordService,
+)
 from src.config import settings
 
 logger = logging.getLogger(__name__)
@@ -52,7 +55,10 @@ async def get_auth_service(
     password_service = PasswordService()
     user_service = UserService(uow=uow, password_service=password_service)
     token_service = TokenService(uow=uow)
-    google_auth_service = GoogleAuthService(redis=redis)
+    google_auth_service = GoogleAuthService(
+        redis=redis,
+        http_session=get_http_client(),
+    )
     return AuthService(
         uow=uow,
         user_service=user_service,

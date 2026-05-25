@@ -15,8 +15,10 @@ from slowapi.errors import RateLimitExceeded
 
 from starlette.requests import Request
 
+from src.domain.exceptions import AppError
 from src.api.exception_handlers import register_exception_handlers
 from src.logging_config import setup_logging
+from src.infrastructure.http.http_client import init_http_client, close_http_client
 from src.api.routers import auth_router, user_router
 from src.api.limiter import limiter
 
@@ -28,7 +30,9 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     setup_logging()
     logger.info("Приложение запускается…")
+    await init_http_client()
     yield
+    await close_http_client()
     logger.info("Приложение останавливается…")
 
 
