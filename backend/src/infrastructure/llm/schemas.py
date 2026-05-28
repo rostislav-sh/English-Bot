@@ -1,6 +1,14 @@
-"""Схемы для валидации ответов от LLM и передачи данных в промпты."""
+"""Схемы для валидации ответов от LLM и передачи данных в промпты.
 
-from pydantic import BaseModel, Field, ConfigDict
+Двойное назначение:
+    1. Валидация JSON-ответа от LLM.
+    2. Промежуточный DTO между сырым ответом и domain entities.
+
+Эти схемы — деталь инфраструктуры. В domain (entities/services) они НЕ
+утекают: Parser возвращает их, но сервис сразу маппит в Test/Question.
+"""
+
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 # ── Входящие данные (для PromptBuilder) ──────────────────────────
@@ -16,11 +24,28 @@ class MistakeItem(BaseModel):
 
 # ── Исходящие данные (от LLM, для парсера) ───────────────────────
 
-class LLMQuestionSchema(BaseModel):
-    text: str = Field(..., description="Текст вопроса")
-    options: list[str] = Field(..., min_length=4, max_length=4, description="4 варианта")
-    correct_index: int = Field(..., ge=0, le=3, description="Индекс правильного ответа (0-3)")
+class GeneratedQuestion(BaseModel):
+    """Один вопрос из ответа LLM."""
 
-class LLMTestGenerationSchema(BaseModel):
-    topic_name: str
-    questions: list[LLMQuestionSchema] = Field(..., min_length=1)
+    text: str = Field(min_length=3, max_length=500)
+    options: list[str] = Field(min_length=2, max_length=6)
+    correct_index: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _check_correct_index_in_range(self) -> "GeneratedQuestion":
+        if self.correct_index >= len(self.options):
+            raise ValueError(
+                f"correct_index={self.correct_index} is out of range "
+                f"for options length={len(self.options)}"
+            )
+        # Опции должны быть уникальны — иначе непонятно, что выбрал юзер
+        if len(set(self.options)) != len(self.options):
+            raise ValueError("options must be unique")
+        return self
+
+
+class GeneratedTest(BaseModel):
+    """Тест целиком — корневая схема для валидации ответа LLM."""
+
+    topic_name: str = Field(min_length=1, max_length=100)
+    questions: list[GeneratedQuestion] = Field(min_length=3, max_length=15)
