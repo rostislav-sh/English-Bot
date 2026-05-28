@@ -21,4 +21,6 @@ dependencies = [
     "google>=3.0.0",
     "requests>=2.32.0",
     "celery-types>=0.26.0",
+    "google-genai>=2.6.0",
+    "tenacity>=9.1.4",
 ]
