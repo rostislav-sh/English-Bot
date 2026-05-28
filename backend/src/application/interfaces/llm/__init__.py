@@ -7,6 +7,8 @@ from .exceptions import (
     LLMRateLimitError,
     LLMServiceUnavailableError,
     LLMResponseError,
+    PromptGenerationError,
+    LLMParseError
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "LLMRateLimitError",
     "LLMServiceUnavailableError",
     "LLMResponseError",
+    "PromptGenerationError",
+    "LLMParseError"
 ]

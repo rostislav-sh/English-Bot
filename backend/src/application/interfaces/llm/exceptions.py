@@ -26,4 +26,13 @@ class LLMServiceUnavailableError(LLMError):
 class LLMResponseError(LLMError):
     """Провайдер вернул пустой/невалидный ответ (но HTTP 200)."""
     message = "LLM вернул невалидный ответ"
-    
+
+
+class PromptGenerationError(LLMError):
+    """Ошибка при формировании промпта (например, некорректные входные данные)."""
+    message = "Не удалось создать промпт-подсказку из-за неверного ввода."
+
+
+class LLMParseError(LLMError):
+    """LLM вернула ответ, но он не соответствует ожидаемой JSON-схеме."""
+    message = "Ответ LLM не соответствует json схеме"
