@@ -33,6 +33,19 @@ class PromptGenerationError(LLMError):
     message = "Не удалось создать промпт-подсказку из-за неверного ввода."
 
 
-class LLMParseError(LLMError):
-    """LLM вернула ответ, но он не соответствует ожидаемой JSON-схеме."""
-    message = "Ответ LLM не соответствует json схеме"
+class ParseError(Exception):
+    """Базовая ошибка парсинга ответа LLM."""
+    message = "Не удалось проанализировать ответ LLM."
+
+    def __init__(self, message: str | None = None) -> None:
+        super().__init__(message or self.message)
+
+
+class InvalidJSONError(ParseError):
+    """LLM вернул синтаксически невалидный JSON."""
+    message = "Ответ LLM вернул недействительный JSON."
+
+
+class SchemaValidationError(ParseError):
+    """JSON валиден, но не соответствует ожидаемой схеме."""
+    message = "Ответ LLM не соответствует ожидаемой схеме."

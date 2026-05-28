@@ -8,7 +8,9 @@ from .exceptions import (
     LLMServiceUnavailableError,
     LLMResponseError,
     PromptGenerationError,
-    LLMParseError
+    ParseError,
+    InvalidJSONError,
+    SchemaValidationError
 )
 
 __all__ = [
@@ -19,5 +21,7 @@ __all__ = [
     "LLMServiceUnavailableError",
     "LLMResponseError",
     "PromptGenerationError",
-    "LLMParseError"
+    "ParseError",
+    "InvalidJSONError",
+    "SchemaValidationError"
 ]
