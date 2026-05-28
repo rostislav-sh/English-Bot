@@ -6,7 +6,6 @@ from src.application.interfaces.unitofwork import IUnitOfWork
 from src.application.services import UserService, TokenService, GoogleAuthService
 from src.domain.entities import User
 from src.application.dto.auth import (
-    GoogleUserData,
     LoginCommand,
     RegisterCommand,
     TokenPair,

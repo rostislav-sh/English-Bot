@@ -2,7 +2,7 @@
 
 import logging
 
-from src.application.dto.auth import RegisterCommand
+from src.application.dto.auth import RegisterCommand, GoogleUserData
 from src.application.interfaces.exceptions import UniqueViolationError
 from src.application.interfaces.unitofwork import IUnitOfWork
 from src.domain import User, AuthProvider
