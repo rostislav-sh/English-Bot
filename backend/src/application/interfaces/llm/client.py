@@ -17,7 +17,7 @@ class ILLMClient(Protocol):
           это задача Parser в сервисном слое.
     """
 
-    async def complete(self, prompt: str, *, json_model: bool = False) -> str:
+    async def complete(self, prompt: str, *, json_mode: bool = False) -> str:
         """
        Отправляет prompt в LLM и возвращает сгенерированный текст.
 
@@ -28,4 +28,3 @@ class ILLMClient(Protocol):
        :raises LLMError: и его подклассы — см. описание класса.
        """
         ...
-    
