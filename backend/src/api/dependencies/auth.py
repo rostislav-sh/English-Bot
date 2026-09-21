@@ -11,9 +11,8 @@ from fastapi import Cookie, Header, HTTPException, status, Depends
 import jwt
 
 from src.application.interfaces.unitofwork import IUnitOfWork
+from src.api.dependencies.database import get_uow
 from src.application.interfaces.auth import AuthServiceProtocol
-from src.infrastructure.database.unitofwork import SQLAlchemyUnitOfWorkFactory
-from src.infrastructure.database.config_db import session_factory
 from src.infrastructure.redis.auth_state import RedisAuthState
 from src.infrastructure.redis.config_redis import redis_client
 from src.infrastructure.http.http_client import get_http_client
@@ -27,19 +26,6 @@ from src.application.services import (
 from src.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Фабрика создаётся один раз при старте — session_factory переиспользуется
-_uow_factory = SQLAlchemyUnitOfWorkFactory(session_factory)
-
-
-# ── Unit of Work ─────────────────────────────────────────────────────
-
-async def get_uow() -> IUnitOfWork:
-    """Фабрика Unit of Work для Dependency Injection.
-
-    Каждый запрос получает изолированный UoW с собственной сессией.
-    """
-    return _uow_factory()
 
 
 # ── Сервисы ──────────────────────────────────────────────────────────
