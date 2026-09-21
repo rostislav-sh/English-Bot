@@ -46,6 +46,9 @@ class TopicService:
         )
 
         created = await self._uow.topics.get_or_create(topic)
+        # get_uow() не коммитит сам — без явного commit() тема не переживёт
+        # закрытие сессии (uncommitted transaction откатывается при close()).
+        await self._uow.commit()
         return created
 
     async def list_system_topics(self) -> list[Topic]:
