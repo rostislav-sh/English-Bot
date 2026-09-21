@@ -18,6 +18,12 @@ from src.domain.exceptions import (
     GoogleDataReadError,
     GoogleEmailNotVerifiedError,
     InvalidOAuthStateError,
+    TopicNotFoundError,
+    TestNotFoundError,
+    TestNotReadyError,
+    TestGenerationFailedError,
+    AttemptNotFoundError,
+    AnswersMismatchError,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +41,12 @@ UserAlreadyExistsError: 409,
     GoogleDataReadError: 401,
     GoogleEmailNotVerifiedError: 401,
     InvalidOAuthStateError: 400,
+    TopicNotFoundError: 404,
+    TestNotFoundError: 404,
+    AttemptNotFoundError: 404,
+    TestNotReadyError: 409,
+    TestGenerationFailedError: 422,
+    AnswersMismatchError: 400,
 }
 
 
