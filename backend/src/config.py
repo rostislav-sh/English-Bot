@@ -54,10 +54,13 @@ class Settings(BaseSettings):
     base_url: str = Field(validation_alias="BASE_URL")
     token_url: str = Field(validation_alias="TOKEN_URL")
 
-    frontend_redirect_url: str = Field(
-        default="http://localhost:3000/dashboard",
-        validation_alias="FRONTEND_REDIRECT_URL",
-    )
+    # ── LLM (Gemini) ─────────────────────────────────────────────────
+    gemini_api_key: str = Field(validation_alias="GEMINI_API_KEY")
+    gemini_model: str = Field(validation_alias="GEMINI_MODEL")
+    gemini_timeout_seconds: float = Field(validation_alias="GEMINI_TIMEOUT_SECONDS")
+    gemini_max_retries: int = Field(validation_alias="GEMINI_MAX_RETRIES")
+
+    frontend_redirect_url: str = Field(validation_alias="FRONTEND_REDIRECT_URL")
 
     @field_validator("samesite", mode="before")
     @classmethod

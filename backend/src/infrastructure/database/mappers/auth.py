@@ -8,7 +8,7 @@
     update_model_from_entity — синхронизация изменений entity → model (для UPDATE)
 """
 from src.domain.entities import User, RefreshToken
-from .models import UserModel, RefreshTokenModel
+from src.infrastructure.database.models import UserModel, RefreshTokenModel
 
 
 # ════════════════════════════════════════

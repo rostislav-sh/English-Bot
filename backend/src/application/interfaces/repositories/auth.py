@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from src.application.interfaces.base_repository import IBaseRepository
+from src.application.interfaces.repositories.base import IBaseRepository
 from src.domain.entities import User, RefreshToken
 
 

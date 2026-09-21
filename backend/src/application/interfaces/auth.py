@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from src.schemas.auth import TokenPair
+from src.application.dto.auth import LoginCommand, RegisterCommand, TokenPair
 from src.domain.entities import User
 
 
@@ -12,10 +12,10 @@ class AuthServiceProtocol(Protocol):
     Роутеры зависят от этого протокола, а не от конкретной реализации.
     """
 
-    async def register(self, email: str, password: str, username: str) -> tuple[User, TokenPair]:
+    async def register(self, cmd: RegisterCommand) -> tuple[User, TokenPair]:
         """Регистрация пользователя."""
 
-    async def login(self, email: str, password: str) -> tuple[User, TokenPair]:
+    async def login(self, cmd: LoginCommand) -> tuple[User, TokenPair]:
         """Вход по email + пароль."""
 
     async def refresh(self, raw_refresh_token: str) -> tuple[User, TokenPair]:

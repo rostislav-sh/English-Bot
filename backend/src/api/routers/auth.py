@@ -17,7 +17,8 @@ from src.infrastructure.auth.cookies import (
     generate_csrf_token,
 )
 from src.config import settings
-from src.api.exceptions import AppError
+from src.domain.exceptions import DomainError
+from src.application.dto.auth import LoginCommand, RegisterCommand
 from src.application.interfaces import AuthServiceProtocol
 from src.api.dependencies import get_auth_service, verify_csrf_token
 from src.api.schemas.auth import (
@@ -44,7 +45,9 @@ async def register(
 ):
     """Регистрация нового пользователя и выдача пары токенов."""
     logger.info("POST /register email=%s", data.email)
-    user, pair = await service.register(email=data.email, password=data.password, username=data.username)
+    user, pair = await service.register(
+        RegisterCommand(email=data.email, password=data.password, username=data.username),
+    )
     set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
     csrf_token = generate_csrf_token()
     set_token_cookies_csrf(response, csrf_token)
@@ -70,7 +73,7 @@ async def login(
 ) -> UserOut:
     """Проверяет учётные данные и возвращает пару токенов (access + refresh)."""
     logger.info("POST /login email=%s", data.email)
-    user, pair = await service.login(email=data.email, password=data.password)
+    user, pair = await service.login(LoginCommand(email=data.email, password=data.password))
     set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
     csrf_token = generate_csrf_token()
     set_token_cookies_csrf(response, csrf_token)
@@ -114,7 +117,7 @@ async def logout(
     if refresh_token:
         try:
             await service.logout(refresh_token)
-        except AppError as exc:
+        except DomainError as exc:
             logger.warning("Ошибка при отзыве токена: %s", exc)
 
     response.delete_cookie(
@@ -190,17 +193,22 @@ async def google_auth_callback(
     # Бизнес-логика: обмен code → токены, поиск/создание пользователя
     try:
         _, pair = await service.authenticate_via_google(code=code, state=state)
-    except AppError as exc:
+    except DomainError as exc:
         logger.error("Бизнес ошибка Google OAuth: %s", exc)
         return RedirectResponse(
             url=f"{base}?auth_error=google_auth_failed", status_code=status.HTTP_302_FOUND,
         )
 
-    # Успех — редирект на фронтенд с JWT-куками
-    response = RedirectResponse(url=base, status_code=status.HTTP_302_FOUND)
+    # Успех — редирект на фронтенд с JWT-куками.
+    # CSRF дублируем в query: заголовок X-CSRF-Token на 302 фронт не увидит.
+    csrf_token = generate_csrf_token()
+    separator = "&" if "?" in base else "?"
+    response = RedirectResponse(
+        url=f"{base}{separator}csrf={csrf_token}",
+        status_code=status.HTTP_302_FOUND,
+    )
     response.delete_cookie(key="google_oauth_state", path="/", domain=settings.domain)
     set_token_cookies_auth(response, pair.access_token, pair.refresh_token)
-    csrf_token = generate_csrf_token()
     set_token_cookies_csrf(response, csrf_token)
     response.headers["X-CSRF-Token"] = csrf_token
 

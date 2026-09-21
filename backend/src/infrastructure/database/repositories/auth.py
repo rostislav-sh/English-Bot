@@ -2,14 +2,13 @@
 
 import logging
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, or_, exists, func, update
 
 from src.application.interfaces.repositories import IUserRepository, IRefreshTokenRepository
-from src.infrastructure.database.base_repository import SQLAlchemyBaseRepository
+from src.infrastructure.database.repositories.base import SQLAlchemyBaseRepository
 from src.infrastructure.database.models import UserModel, RefreshTokenModel
 from src.domain.entities import User, RefreshToken
-from .mappers import (
+from src.infrastructure.database.mappers import (
     user_model_to_entity,
     user_entity_to_model,
     update_user_model_from_entity,

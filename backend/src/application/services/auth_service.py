@@ -3,12 +3,16 @@
 import logging
 
 from src.application.interfaces.unitofwork import IUnitOfWork
-from src.application.services.user_service import UserService
-from src.application.services.token_service import TokenService
 from src.application.services.google_auth_service import GoogleAuthService
+from src.application.services.token_service import TokenService
+from src.application.services.user_service import UserService
 from src.domain.entities import User
-from src.schemas.auth import TokenPair
-from src.api.exceptions import RefreshTokenNotFoundError, RefreshTokenLifetimeExpiredError
+from src.application.dto.auth import (
+    LoginCommand,
+    RegisterCommand,
+    TokenPair,
+)
+from src.domain.exceptions import RefreshTokenNotFoundError, RefreshTokenExpiredError
 
 logger = logging.getLogger(__name__)
 
@@ -32,27 +36,23 @@ class AuthService:
         self._token_service = token_service
         self._google_auth_service = google_auth_service
 
-    async def register(self, email: str, password: str, username: str) -> tuple[User, TokenPair]:
+    async def register(self, cmd: RegisterCommand) -> tuple[User, TokenPair]:
         """Регистрирует пользователя, выдаёт пару токенов."""
-        logger.info("Регистрация: %s", email)
+        logger.info("Регистрация: %s", cmd.email)
         async with self._uow:
-            user = await self._user_service.register(
-                email=email,
-                password=password,
-                username=username,
-            )
+            user = await self._user_service.register(cmd)
             pair = await self._token_service.issue(user.id)
             await self._uow.commit()
         logger.info("Пользователь зарегистрирован: id=%s", user.id)
         return user, pair
 
-    async def login(self, email: str, password: str) -> tuple[User, TokenPair]:
+    async def login(self, cmd: LoginCommand) -> tuple[User, TokenPair]:
         """Проверяет credentials, выдаёт пару токенов."""
-        logger.info("Вход: %s", email)
+        logger.info("Вход: %s", cmd.email)
         async with self._uow:
             user = await self._user_service.get_authenticated(
-                email=email,
-                password=password,
+                email=cmd.email,
+                password=cmd.password,
             )
             pair = await self._token_service.issue(user.id)
             await self._uow.commit()
@@ -63,7 +63,7 @@ class AuthService:
         """Обновляет пару токенов по refresh-токену."""
         logger.info("Обновление токенов")
         async with self._uow:
-            stored_token = await self._token_service.get_valid(refresh_token)
+            stored_token = await self._token_service.validate_and_get(refresh_token)
             user = await self._user_service.get_by_id(stored_token.user_id)
             stored_token.revoked = True  # sync_tracked() запишет в БД при commit()
             pair = await self._token_service.issue(user.id)
@@ -80,12 +80,14 @@ class AuthService:
         logger.info("Выход пользователя")
         async with self._uow:
             try:
-                stored_token = await self._token_service.get_valid(refresh_token)
-                stored_token.revoked = True
-                await self._uow.commit()
-            except (RefreshTokenNotFoundError, RefreshTokenLifetimeExpiredError):
+                stored_token = await self._token_service.validate_and_get(refresh_token)
+                await self._token_service.revoke(stored_token)
+            except (RefreshTokenNotFoundError, RefreshTokenExpiredError):
                 # Токен уже недействителен — выход засчитываем как успешный
                 logger.info("Logout: токен уже недействителен, выход засчитан")
+            
+            await self._uow.commit()
+            
         logger.info("Refresh-токен отозван")
 
     async def get_google_url(self) -> tuple[str, str]:
@@ -103,4 +105,5 @@ class AuthService:
             user = await self._user_service.get_or_create_google_user(user_info)
             pair = await self._token_service.issue(user.id)
             await self._uow.commit()
+        logger.info("Google OAuth завершён: user_id=%s", user.id)
         return user, pair

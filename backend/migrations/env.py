@@ -15,8 +15,8 @@ from os.path import abspath, dirname
 sys.path.insert(0, dirname(dirname(abspath(__file__))))  # Добавляем корень проекта в sys.path
 
 from src.config import settings
-from src.infrastructure.database import Base
-from src.infrastructure.database import models as _db_models  # noqa: F401
+from src.infrastructure.database.models.base import Base
+from src.infrastructure.database.models import *
 # Обязательно импортируй ВСЕ модели, иначе Alembic их не увидит!
 print("\n" + "="*50)
 print(f"ALEMBIC ИДЕТ ПО URL: {settings.database_url}")

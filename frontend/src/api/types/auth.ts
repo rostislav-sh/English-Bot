@@ -1,23 +1,17 @@
 export type Authentication = {
-  email: string
-  password: string
+	email: string
+	password: string
 }
 
-export type TokenPair = {
-  access_token: string
-  refresh_token: string
-  token_type: string
+export type RegisterIn = Authentication & {
+	username: string
 }
 
-export type RegisterOut = {
-  id: number
-  email: string
-  access_token: string
-  refresh_token: string
-  token_type: string
+export type UserOut = {
+	username: string | null
+	email: string
 }
 
-export type RefreshRequest = {
-  refresh_token: string
+export type MeOut = {
+	user_id: number
 }
-

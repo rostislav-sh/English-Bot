@@ -2,14 +2,15 @@
 
 import logging
 
+from src.application.dto.auth import RegisterCommand, GoogleUserData
+from src.application.interfaces.exceptions import UniqueViolationError
 from src.application.interfaces.unitofwork import IUnitOfWork
-from src.domain.entities import User, AuthProvider
-from src.api.exceptions import (
+from src.domain import User, AuthProvider
+from src.domain.exceptions import (
     InvalidCredentialsError,
     UserNotFoundError,
     UserAlreadyExistsError,
 )
-from src.schemas.auth import GoogleUserData
 from src.application.services.password_service import PasswordService
 
 logger = logging.getLogger(__name__)
@@ -46,20 +47,25 @@ class UserService:
 
     # ── Создание ─────────────────────────────────────────────────────
 
-    async def register(self, email: str, password: str, username: str) -> User:
+    async def register(self, cmd: RegisterCommand) -> User:
         """Создаёт локального пользователя."""
-        if await self._uow.users.exists_by_email(email):
+        if await self._uow.users.exists_by_email(cmd.email):
             raise UserAlreadyExistsError()
 
         user = User(
-            email=email,
-            password_hash=self._password_service.hash(password),
-            username=username,
+            email=cmd.email,
+            password_hash=self._password_service.hash(cmd.password),
+            username=cmd.username,
             auth_provider=AuthProvider.LOCAL,
         )
-        result = await self._uow.users.add(user)
-        logger.info("Пользователь создан: id=%s email=%s", result.id, email)
-        return result
+        try:
+            result = await self._uow.users.add(user)
+            logger.info("Пользователь создан: id=%s email=%s", result.id, cmd.email)
+            return result
+        except UniqueViolationError as e:
+            # Ловим (Race Condition), когда кто-то вклинился между проверкой и вставкой
+            logger.info("Race-condition при регистрации: %s", cmd.email)
+            raise UserAlreadyExistsError() from e
 
     async def get_authenticated(self, email: str, password: str) -> User:
         """Проверяет credentials, возвращает пользователя или выбрасывает ошибку."""
@@ -67,23 +73,23 @@ class UserService:
 
         if not user:
             # Защита от User Enumeration Attack — постоянное время ответа
-            self._password_service.verify_with_timing_protection(password)
+            await self._password_service.verify_with_timing_protection(password)
             logger.warning("Вход с несуществующим email: %s", email)
-            raise InvalidCredentialsError
+            raise InvalidCredentialsError()
 
         # Google-only аккаунт — пароль не установлен, вход через пароль невозможен
         if not user.password_hash:
-            self._password_service.verify_with_timing_protection(password)
+            await self._password_service.verify_with_timing_protection(password)
             logger.warning(
                 "Попытка входа по паролю для Google-аккаунта: user_id=%s provider=%s",
                 user.id,
                 user.auth_provider,
             )
-            raise InvalidCredentialsError
+            raise InvalidCredentialsError()
 
-        if not self._password_service.verify(password, user.password_hash):
+        if not await self._password_service.verify(password, user.password_hash):
             logger.warning("Неверный пароль: user_id=%s", user.id)
-            raise InvalidCredentialsError
+            raise InvalidCredentialsError()
 
         return user
 
@@ -121,6 +127,7 @@ class UserService:
         if not user.picture_url and user_info.picture:
             user.picture_url = user_info.picture
 
+        await self._uow.users.update(user)
         logger.info(
             "Google привязан: user_id=%s provider=%s",
             user.id,
@@ -137,6 +144,17 @@ class UserService:
             username=user_info.username,
             picture_url=user_info.picture,
         )
-        result = await self._uow.users.add(user)
-        logger.info("Google-пользователь создан: id=%s email=%s", result.id, user_info.email)
-        return result
+        try:
+            result = await self._uow.users.add(user)
+            logger.info("Google-пользователь создан: id=%s email=%s", result.id, user_info.email)
+            return result
+        except UniqueViolationError as e:
+            # Race: параллельный запрос успел вставить → повторно читаем
+            logger.info(
+                "Race при создании Google-пользователя, перечитываем: %s",
+                user_info.email,
+            )
+            user = await self._uow.users.get_by_email(user_info.email)
+            if user is None:
+                raise e
+            return await self._link_google(user, user_info)
