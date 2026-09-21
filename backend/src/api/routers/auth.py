@@ -17,7 +17,7 @@ from src.infrastructure.auth.cookies import (
     generate_csrf_token,
 )
 from src.config import settings
-from src.api.exception_handlers import AppError
+from src.domain.exceptions import DomainError
 from src.application.interfaces import AuthServiceProtocol
 from src.api.dependencies import get_auth_service, verify_csrf_token
 from src.api.schemas.auth import (
@@ -114,7 +114,7 @@ async def logout(
     if refresh_token:
         try:
             await service.logout(refresh_token)
-        except AppError as exc:
+        except DomainError as exc:
             logger.warning("Ошибка при отзыве токена: %s", exc)
 
     response.delete_cookie(
@@ -190,7 +190,7 @@ async def google_auth_callback(
     # Бизнес-логика: обмен code → токены, поиск/создание пользователя
     try:
         _, pair = await service.authenticate_via_google(code=code, state=state)
-    except AppError as exc:
+    except DomainError as exc:
         logger.error("Бизнес ошибка Google OAuth: %s", exc)
         return RedirectResponse(
             url=f"{base}?auth_error=google_auth_failed", status_code=status.HTTP_302_FOUND,

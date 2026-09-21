@@ -8,18 +8,15 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from starlette.requests import Request
-
-from src.domain.exceptions import AppError
 from src.api.exception_handlers import register_exception_handlers
 from src.logging_config import setup_logging
 from src.infrastructure.http.http_client import init_http_client, close_http_client
-from src.api.routers import auth_router, user_router
+from src.api.routers import auth_router, user_router, quiz_router
+from src.infrastructure.llm.prompt_builder import load_templates
 from src.api.limiter import limiter
 
 logger = logging.getLogger(__name__)
@@ -30,9 +27,24 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     setup_logging()
     logger.info("Приложение запускается…")
+
+    # Инициализация HTTP-клиента
     await init_http_client()
+
+    # ── LLM Шаблоны (Fail-fast) ──
+    # Загружаем .md файлы синхронно. Если их нет — приложение упадет до открытия порта.
+    test_gen_tpl, rec_tpl = load_templates()
+    app.state.tpl_test_gen = test_gen_tpl
+    app.state.tpl_recommendation = rec_tpl
+    logger.info("Шаблоны LLM успешно загружены в состояние приложения.")
+
     yield
+
     await close_http_client()
+
+    # Очистка памяти
+    del app.state.tpl_test_gen
+    del app.state.tpl_recommendation
     logger.info("Приложение останавливается…")
 
 
@@ -52,16 +64,6 @@ async def health():
     return {"status": "ok"}
 
 
-@app.exception_handler(AppError)
-async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    """Глобальный обработчик бизнес-ошибок → JSON-ответ."""
-    logger.warning("AppError: %s (status=%s, path=%s)", exc, exc.status_code, request.url.path)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": str(exc)},
-    )
-
-
 app.include_router(
     auth_router,
     tags=["Авторизация"],
@@ -69,6 +71,10 @@ app.include_router(
 app.include_router(
     user_router,
     tags=["Пользователь"]
+)
+app.include_router(
+    quiz_router,
+    tags=["Квизы"],
 )
 
 app.add_middleware(
