@@ -45,7 +45,7 @@ class TopicService:
             is_custom=is_custom,
         )
 
-        created = await self.topics.get_or_create(topic)
+        created = await self._uow.topics.get_or_create(topic)
         return created
 
     async def list_system_topics(self) -> list[Topic]:
