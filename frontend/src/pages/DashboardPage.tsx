@@ -4,6 +4,7 @@ import { ApiError } from '../api/http'
 import { refresh } from '../api/auth'
 import { getMonthlyStats, listAttempts } from '../api/quiz'
 import { useAuth } from '../auth/useAuth'
+import StatsChart from '../components/StatsChart'
 import type { AttemptHistoryItemOut, MonthlyStatOut } from '../api/types/quiz'
 
 function errorMessageFromGoogleAuthError(authError: string | null): string | null {
@@ -27,15 +28,9 @@ function formatDate(value: string | null): string {
 	return date.toLocaleString()
 }
 
-function formatMonth(value: string): string {
-	const date = new Date(value)
-	if (Number.isNaN(date.getTime())) return value
-	return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-}
-
 export default function DashboardPage() {
 	const location = useLocation()
-	const { user, userId, reload } = useAuth()
+	const { user, reload } = useAuth()
 	const [pending, setPending] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [lastAction, setLastAction] = useState<string | null>(null)
@@ -96,10 +91,6 @@ export default function DashboardPage() {
 				<p className="muted">You are signed in. Tokens live in httpOnly cookies, not in localStorage.</p>
 				<div className="kv">
 					<div className="kv__row">
-						<span>User id</span>
-						<code>{userId ?? '—'}</code>
-					</div>
-					<div className="kv__row">
 						<span>Username</span>
 						<code>{user?.username ?? '—'}</code>
 					</div>
@@ -126,24 +117,7 @@ export default function DashboardPage() {
 				<h2 className="card__title">Monthly stats</h2>
 				{loadingQuiz ? <p className="muted">Loading stats...</p> : null}
 				{!loadingQuiz && stats.length === 0 ? <p className="muted">No attempts this period yet.</p> : null}
-				{stats.map((item) => (
-					<div key={item.month} className="kv">
-						<div className="kv__row">
-							<span>{formatMonth(item.month)}</span>
-							<strong>{item.attempts_count} attempts</strong>
-						</div>
-						<div className="kv__row">
-							<span>Accuracy</span>
-							<code>{Math.round(item.accuracy)}%</code>
-						</div>
-						<div className="kv__row">
-							<span>Score</span>
-							<code>
-								{item.total_score} / {item.total_questions}
-							</code>
-						</div>
-					</div>
-				))}
+				{!loadingQuiz && stats.length > 0 ? <StatsChart stats={stats} /> : null}
 			</section>
 
 			<section className="card card--wide">
@@ -155,7 +129,7 @@ export default function DashboardPage() {
 						<li key={item.id}>
 							<Link to={`/attempts/${item.id}`}>
 								<span>
-									Attempt #{item.id} · {item.score}/{item.total_questions} · {Math.round(item.percentage)}%
+									{item.score}/{item.total_questions} · {Math.round(item.percentage)}%
 								</span>
 								<span className="muted">{formatDate(item.created_at)}</span>
 							</Link>
