@@ -1,7 +1,7 @@
 import { apiUrl } from './config'
 import { getJson, postJson } from './http'
 import { clearCsrfToken } from '../auth/csrfStorage'
-import type { Authentication, ProfileOut, RegisterIn, UserOut } from './types/auth'
+import type { Authentication, RegisterIn, UserOut, UserProfileOut } from './types/auth'
 
 export async function register(data: RegisterIn): Promise<UserOut> {
 	return postJson<UserOut, RegisterIn>('/register', data)
@@ -24,8 +24,8 @@ export async function logout(): Promise<void> {
 	}
 }
 
-export async function getMeProfile(): Promise<ProfileOut> {
-	return getJson<ProfileOut>('/me/profile')
+export async function getMeProfile(): Promise<UserProfileOut> {
+	return getJson<UserProfileOut>('/me/profile')
 }
 
 export function startGoogleOAuth(): void {

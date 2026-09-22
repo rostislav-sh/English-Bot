@@ -1,24 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ApiError } from '../api/http'
 import { getMeProfile, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
 import { consumeCsrfFromUrl, getCsrfToken } from './csrfStorage'
-import type { Authentication, RegisterIn, UserOut } from '../api/types/auth'
+import { onSessionExpired } from './authEvents'
+import type { Authentication, RegisterIn, UserOut, UserProfileOut } from '../api/types/auth'
+import { AuthContext } from './authContext.core'
+import type { AuthContextValue } from './authContext.core'
 
 const AUTH_USER_KEY = 'auth_user'
-
-type AuthContextValue = {
-	user: UserOut | null
-	userId: number | null
-	ready: boolean
-	isAuthenticated: boolean
-	login: (data: Authentication) => Promise<void>
-	register: (data: RegisterIn) => Promise<void>
-	logout: () => Promise<void>
-	reload: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
 
 function readStoredUser(): UserOut | null {
 	const raw = sessionStorage.getItem(AUTH_USER_KEY)
@@ -38,65 +28,92 @@ function storeUser(user: UserOut | null): void {
 	sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
 }
 
+function userFromProfile(profile: UserProfileOut): UserOut {
+	return { username: profile.username, email: profile.email }
+}
+
+function clearSession(
+	setUser: (user: UserOut | null) => void,
+	setUserId: (id: number | null) => void,
+): void {
+	setUser(null)
+	setUserId(null)
+	storeUser(null)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<UserOut | null>(readStoredUser)
 	const [userId, setUserId] = useState<number | null>(null)
 	const [ready, setReady] = useState(false)
+
+	const applyProfile = useCallback((profile: UserProfileOut): void => {
+		const nextUser = userFromProfile(profile)
+		storeUser(nextUser)
+		setUser(nextUser)
+		setUserId(profile.id)
+	}, [])
 
 	const reload = useCallback(async (): Promise<void> => {
 		consumeCsrfFromUrl()
 		getCsrfToken()
 		try {
 			const profile = await getMeProfile()
-			const nextUser: UserOut = { username: profile.username, email: profile.email }
-			setUserId(profile.id)
-			setUser(nextUser)
-			storeUser(nextUser)
+			applyProfile(profile)
 		} catch (err) {
 			const apiErr = err as ApiError
 			if (apiErr.status === 401 || apiErr.status === 403) {
-				setUserId(null)
-				setUser(null)
-				storeUser(null)
+				clearSession(setUser, setUserId)
 			}
 		} finally {
 			setReady(true)
 		}
-	}, [])
+	}, [applyProfile])
 
 	useEffect(() => {
 		void reload()
 	}, [reload])
 
-	const login = useCallback(async (data: Authentication): Promise<void> => {
-		const nextUser = await loginRequest(data)
-		storeUser(nextUser)
-		setUser(nextUser)
-		try {
-			const profile = await getMeProfile()
-			setUserId(profile.id)
-		} catch {
-			setUserId(null)
-		}
-	}, [])
+	useEffect(
+		() =>
+			onSessionExpired(() => {
+				clearSession(setUser, setUserId)
+			}),
+		[],
+	)
 
-	const register = useCallback(async (data: RegisterIn): Promise<void> => {
-		const nextUser = await registerRequest(data)
-		storeUser(nextUser)
-		setUser(nextUser)
-		try {
-			const profile = await getMeProfile()
-			setUserId(profile.id)
-		} catch {
-			setUserId(null)
-		}
-	}, [])
+	const login = useCallback(
+		async (data: Authentication): Promise<void> => {
+			const nextUser = await loginRequest(data)
+			storeUser(nextUser)
+			setUser(nextUser)
+			try {
+				const profile = await getMeProfile()
+				applyProfile(profile)
+			} catch {
+				setUserId(null)
+			}
+		},
+		[applyProfile],
+	)
+
+	const register = useCallback(
+		async (data: RegisterIn): Promise<void> => {
+			const nextUser = await registerRequest(data)
+			storeUser(nextUser)
+			setUser(nextUser)
+			try {
+				const profile = await getMeProfile()
+				applyProfile(profile)
+			} catch {
+				setUserId(null)
+			}
+		},
+		[applyProfile],
+	)
 
 	const logout = useCallback(async (): Promise<void> => {
 		await logoutRequest()
-		setUser(null)
-		setUserId(null)
-		storeUser(null)
+		clearSession(setUser, setUserId)
 	}, [])
 
 	const value = useMemo<AuthContextValue>(
@@ -114,12 +131,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	)
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthContextValue {
-	const ctx = useContext(AuthContext)
-	if (!ctx) {
-		throw new Error('useAuth must be used within AuthProvider')
-	}
-	return ctx
 }

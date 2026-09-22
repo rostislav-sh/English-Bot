@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { startGoogleOAuth } from '../api/auth'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import GoogleIcon from '../components/GoogleIcon'
 
 export default function LoginPage() {

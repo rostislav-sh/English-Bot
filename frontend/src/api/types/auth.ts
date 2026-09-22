@@ -12,7 +12,7 @@ export type UserOut = {
 	email: string
 }
 
-export type ProfileOut = {
+export type UserProfileOut = {
 	id: number
 	email: string
 	username: string | null

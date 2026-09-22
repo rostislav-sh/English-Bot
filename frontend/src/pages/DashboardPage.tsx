@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { refresh } from '../api/auth'
 import { getMonthlyStats, listAttempts } from '../api/quiz'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import type { AttemptHistoryItemOut, MonthlyStatOut } from '../api/types/quiz'
 
 function errorMessageFromGoogleAuthError(authError: string | null): string | null {

@@ -1,4 +1,5 @@
 import { apiUrl } from './config'
+import { notifySessionExpired } from '../auth/authEvents'
 import { clearCsrfToken, getCsrfToken, setCsrfToken } from '../auth/csrfStorage'
 
 const CSRF_HEADER = 'X-CSRF-Token'
@@ -113,6 +114,9 @@ export async function requestJson<TResponse>(
 			return requestJson<TResponse>(path, { ...opts, skipAuthRetry: true })
 		}
 		clearCsrfToken()
+		if (path !== '/login' && path !== '/register') {
+			notifySessionExpired()
+		}
 	}
 
 	if (!res.ok) {
