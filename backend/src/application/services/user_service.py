@@ -54,7 +54,7 @@ class UserService:
 
         user = User(
             email=cmd.email,
-            password_hash=self._password_service.hash(cmd.password),
+            password_hash=await self._password_service.hash(cmd.password),
             username=cmd.username,
             auth_provider=AuthProvider.LOCAL,
         )

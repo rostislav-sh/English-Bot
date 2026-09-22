@@ -1,6 +1,6 @@
 """DTO слоя application — пересекают границу api↔application."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FrozenDTO(BaseModel):
@@ -15,12 +15,19 @@ class TokenPair(FrozenDTO):
     token_type: str = "bearer"
 
 
-class GoogleUserData(FrozenDTO):
-    """Данные пользователя, извлечённые из верифицированного Google ID-токена."""
-    google_id: str
+class GoogleUserData(BaseModel):
+    """Данные пользователя, извлечённые из верифицированного Google ID-токена.
+
+    Не наследуется от FrozenDTO: парсит внешние claims чужого JWT, где лишние
+    поля (iss, aud, azp, iat, exp, at_hash, given_name, family_name и т.д.) —
+    норма, а не ошибка, поэтому extra="ignore", а не "forbid".
+    """
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    google_id: str = Field(alias="sub")
     email: str
     email_verified: bool
-    username: str | None = None
+    username: str | None = Field(default=None, alias="name")
     picture: str | None = None
 
 

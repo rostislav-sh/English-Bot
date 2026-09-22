@@ -149,10 +149,10 @@ async def get_google_login_url(
     """Генерирует URL для редиректа пользователя на Google OAuth."""
     logger.info("GET /auth/google")
 
-    url, state = await service.get_google_url()
+    authorization = await service.get_google_url()
 
-    response = RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
-    set_cookies_google_oauth_state(response=response, state=state)
+    response = RedirectResponse(url=authorization.url, status_code=status.HTTP_302_FOUND)
+    set_cookies_google_oauth_state(response=response, state=authorization.state)
 
     return response
 
