@@ -12,17 +12,6 @@ router = APIRouter()
 
 
 @router.get(
-    "/me",
-    summary="Получить пользователя",
-    dependencies=[Depends(verify_csrf_token)],
-)
-async def get_me(
-    user_id: str = Depends(get_current_user_id_from_access_token),
-):
-    return {"user_id": user_id}
-
-
-@router.get(
     "/me/profile",
     summary="Профиль пользователя",
     response_model=UserProfileOut,

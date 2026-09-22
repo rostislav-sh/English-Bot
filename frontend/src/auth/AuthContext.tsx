@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ApiError } from '../api/http'
-import { getMe, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
+import { getMeProfile, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
 import { consumeCsrfFromUrl, getCsrfToken } from './csrfStorage'
 import type { Authentication, RegisterIn, UserOut } from '../api/types/auth'
 
@@ -47,9 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		consumeCsrfFromUrl()
 		getCsrfToken()
 		try {
-			const me = await getMe()
-			setUserId(me.user_id)
-			setUser((current) => current ?? readStoredUser())
+			const profile = await getMeProfile()
+			const nextUser: UserOut = { username: profile.username, email: profile.email }
+			setUserId(profile.id)
+			setUser(nextUser)
+			storeUser(nextUser)
 		} catch (err) {
 			const apiErr = err as ApiError
 			if (apiErr.status === 401 || apiErr.status === 403) {
@@ -71,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		storeUser(nextUser)
 		setUser(nextUser)
 		try {
-			const me = await getMe()
-			setUserId(me.user_id)
+			const profile = await getMeProfile()
+			setUserId(profile.id)
 		} catch {
 			setUserId(null)
 		}
@@ -83,8 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		storeUser(nextUser)
 		setUser(nextUser)
 		try {
-			const me = await getMe()
-			setUserId(me.user_id)
+			const profile = await getMeProfile()
+			setUserId(profile.id)
 		} catch {
 			setUserId(null)
 		}

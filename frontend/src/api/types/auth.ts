@@ -12,6 +12,9 @@ export type UserOut = {
 	email: string
 }
 
-export type MeOut = {
-	user_id: number
+export type ProfileOut = {
+	id: number
+	email: string
+	username: string | null
+	created_at: string | null
 }
