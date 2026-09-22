@@ -1,0 +1,98 @@
+import type { FormEvent } from 'react'
+import { useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { ApiError } from '../api/http'
+import { startGoogleOAuth } from '../api/auth'
+import { useAuth } from '../auth/useAuth'
+import GoogleIcon from '../components/GoogleIcon'
+
+export default function RegisterPage() {
+	const navigate = useNavigate()
+	const { register, isAuthenticated, ready } = useAuth()
+	const [username, setUsername] = useState('')
+	const [email, setEmail] = useState('')
+	const [password, setPassword] = useState('')
+	const [error, setError] = useState<string | null>(null)
+	const [pending, setPending] = useState(false)
+
+	async function onSubmit(e: FormEvent) {
+		e.preventDefault()
+		setError(null)
+		setPending(true)
+		try {
+			await register({ username, email, password })
+			navigate('/dashboard')
+		} catch (err) {
+			const apiErr = err as ApiError
+			setError(apiErr.detail ?? apiErr.message)
+		} finally {
+			setPending(false)
+		}
+	}
+
+	if (ready && isAuthenticated) {
+		return <Navigate to="/dashboard" replace />
+	}
+
+	return (
+		<main className="page">
+			<h1>Register</h1>
+
+			<form className="card" onSubmit={onSubmit}>
+				<label className="field">
+					<span>Username</span>
+					<input
+						value={username}
+						onChange={(e) => setUsername(e.target.value)}
+						type="text"
+						required
+						minLength={2}
+						autoComplete="nickname"
+					/>
+				</label>
+
+				<label className="field">
+					<span>Email</span>
+					<input
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						type="email"
+						required
+						autoComplete="username"
+					/>
+				</label>
+
+				<label className="field">
+					<span>Password</span>
+					<input
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						type="password"
+						required
+						minLength={8}
+						autoComplete="new-password"
+					/>
+				</label>
+
+				{error ? <div className="alert alert--error" role="alert">{error}</div> : null}
+
+				<button className="btn" type="submit" disabled={pending}>
+					{pending ? 'Creating...' : 'Create account'}
+				</button>
+
+				<div className="divider">or</div>
+
+				<button
+					className="btn btn--secondary"
+					type="button"
+					onClick={() => startGoogleOAuth()}
+				>
+					<span className="btn__content">
+						<GoogleIcon size={24} />
+						<span>Continue with Google</span>
+					</span>
+				</button>
+			</form>
+		</main>
+	)
+}
