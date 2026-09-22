@@ -16,6 +16,7 @@ from src.application.interfaces.auth import AuthServiceProtocol
 from src.infrastructure.redis.auth_state import RedisAuthState
 from src.infrastructure.redis.config_redis import redis_client
 from src.infrastructure.http.http_client import get_http_client
+from src.infrastructure.auth.tokens import tokens
 from src.application.services import (
     AuthService,
     UserService,
@@ -40,7 +41,7 @@ async def get_auth_service(
     redis = RedisAuthState(redis=redis_client)
     password_service = PasswordService()
     user_service = UserService(uow=uow, password_service=password_service)
-    token_service = TokenService(uow=uow)
+    token_service = TokenService(uow=uow, tokens_provider=tokens)
     google_auth_service = GoogleAuthService(
         redis=redis,
         http_session=get_http_client(),

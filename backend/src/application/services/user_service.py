@@ -11,7 +11,7 @@ from src.domain.exceptions import (
     UserNotFoundError,
     UserAlreadyExistsError,
 )
-from src.application.services import PasswordService
+from src.application.services.password_service import PasswordService
 
 logger = logging.getLogger(__name__)
 

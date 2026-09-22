@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 
 from src.infrastructure.database.models.base import Base, int_pk, created_at, updated_at
-from src.domain.entities import AuthProvider
+from src.domain.enums import AuthProvider
 
 
 class UserModel(Base):

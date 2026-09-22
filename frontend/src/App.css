@@ -379,3 +379,131 @@
   display: block;
 }
 
+.page__lead {
+  max-width: 720px;
+  margin: 0 auto 20px;
+}
+
+.card--wide {
+  max-width: 720px;
+}
+
+a.btn {
+  display: block;
+  box-sizing: border-box;
+  text-decoration: none;
+  text-align: center;
+}
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto 20px;
+}
+
+.topic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.topic-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.question {
+  border: 0;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.question legend {
+  color: var(--text-h);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.option--selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.result-list {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-item {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.result-item--ok {
+  border-color: rgba(80, 209, 140, 0.6);
+  background: rgba(80, 209, 140, 0.08);
+}
+
+.result-item--bad {
+  border-color: rgba(255, 77, 77, 0.6);
+  background: rgba(255, 77, 77, 0.08);
+}
+
+.history-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-list a {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-h);
+}
+
+@media (max-width: 720px) {
+  .history-list a {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

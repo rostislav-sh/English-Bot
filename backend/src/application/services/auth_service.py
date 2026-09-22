@@ -3,7 +3,9 @@
 import logging
 
 from src.application.interfaces.unitofwork import IUnitOfWork
-from src.application.services import UserService, TokenService, GoogleAuthService
+from src.application.services.google_auth_service import GoogleAuthService
+from src.application.services.token_service import TokenService
+from src.application.services.user_service import UserService
 from src.domain.entities import User
 from src.application.dto.auth import (
     LoginCommand,
@@ -83,9 +85,9 @@ class AuthService:
             except (RefreshTokenNotFoundError, RefreshTokenExpiredError):
                 # Токен уже недействителен — выход засчитываем как успешный
                 logger.info("Logout: токен уже недействителен, выход засчитан")
-            
+
             await self._uow.commit()
-            
+
         logger.info("Refresh-токен отозван")
 
     async def get_google_url(self) -> tuple[str, str]:

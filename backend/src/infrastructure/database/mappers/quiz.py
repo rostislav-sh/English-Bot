@@ -10,7 +10,7 @@
 from src.domain.entities import (
     Topic, Test, Question, TestAttempt, AttemptAnswer,
 )
-from .models import (
+from src.infrastructure.database.models import (
     TopicModel, TestModel, QuestionModel,
     TestAttemptModel, AttemptAnswerModel,
 )
