@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     google_client_id: str = Field(validation_alias="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(validation_alias="GOOGLE_CLIENT_SECRET")
     google_redirect_uri: str = Field(validation_alias="GOOGLE_REDIRECT_URI")
-    base_url: str = Field(validation_alias="BASE_URL")
-    token_url: str = Field(validation_alias="TOKEN_URL")
+    google_authorize_url: str = Field(validation_alias="BASE_URL")
+    google_token_url: str = Field(validation_alias="TOKEN_URL")
 
     # ── LLM (Gemini) ─────────────────────────────────────────────────
     gemini_api_key: str = Field(validation_alias="GEMINI_API_KEY")
@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     @classmethod
     def _normalize_samesite(cls, value: str) -> str:
         return value.lower()
+
+    @field_validator("domain", mode="before")
+    @classmethod
+    def _normalize_domain(cls, value: str | None) -> str | None:
+        """ENV-переменные всегда приходят строками — "None"/"" должны стать настоящим None,
+        иначе Domain=None попадёт в Set-Cookie буквально и браузер отклонит cookie целиком."""
+        if value is None or not value.strip() or value.strip().lower() == "none":
+            return None
+        return value
 
     @property
     def database_url(self) -> str:

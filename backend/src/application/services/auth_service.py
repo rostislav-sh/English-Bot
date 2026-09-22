@@ -8,6 +8,7 @@ from src.application.services.token_service import TokenService
 from src.application.services.user_service import UserService
 from src.domain.entities import User
 from src.application.dto.auth import (
+    GoogleAuthorizationURL,
     LoginCommand,
     RegisterCommand,
     TokenPair,
@@ -90,7 +91,7 @@ class AuthService:
 
         logger.info("Refresh-токен отозван")
 
-    async def get_google_url(self) -> tuple[str, str]:
+    async def get_google_url(self) -> GoogleAuthorizationURL:
         """Генерирует URL для Google OAuth consent screen."""
         return await self._google_auth_service.get_authorization_url()
 

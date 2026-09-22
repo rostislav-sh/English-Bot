@@ -16,7 +16,6 @@ from src.domain.exceptions import (
     GoogleEmailNotVerifiedError, # Изменен на NotVerifiedError для точности
     GoogleIdTokenNotFoundError,
     GoogleTokenExchangeTimeoutError,
-    InvalidOAuthStateError,
 )
 from src.infrastructure.auth.security import security
 from src.application.interfaces.redis import RedisAuthState
@@ -60,9 +59,7 @@ class GoogleAuthService:
 
     async def get_user_info(self, code: str, state: str) -> GoogleUserData:
         """Валидирует state, обменивает code на токен, возвращает данные пользователя."""
-        if not await self._redis.consume_state(state):
-            logger.warning("Невалидный или просроченный OAuth state")
-            raise InvalidOAuthStateError()
+        await self._redis.consume_state(state)
 
         raw_id_token = await self._exchange_code(code)
         return await self._verify_token(raw_id_token)

@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from src.application.dto.auth import LoginCommand, RegisterCommand, TokenPair
+from src.application.dto.auth import GoogleAuthorizationURL, LoginCommand, RegisterCommand, TokenPair
 from src.domain.entities import User
 
 
@@ -21,7 +21,7 @@ class AuthServiceProtocol(Protocol):
     async def refresh(self, raw_refresh_token: str) -> tuple[User, TokenPair]:
         """Ротация refresh-токена."""
 
-    async def get_google_url(self) -> tuple[str, str]:
+    async def get_google_url(self) -> GoogleAuthorizationURL:
         """Генерация Google OAuth URL."""
 
     async def authenticate_via_google(self, code: str, state: str) -> tuple[User, TokenPair]:
