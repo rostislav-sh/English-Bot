@@ -24,6 +24,7 @@ celery_app.conf.update(
     # задачи регистрируются, расписание применяется.
     include=[
         "src.infrastructure.tasks.jobs.token_cleanup",
+        "src.infrastructure.tasks.jobs.test_generation",
         "src.infrastructure.tasks.schedule",
     ],
 )
