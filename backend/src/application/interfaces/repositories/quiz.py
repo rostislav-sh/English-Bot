@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from src.application.interfaces.repositories.base import IBaseRepository
-from src.domain.entities import Topic, Test, TestAttempt, MonthlyStats
+from src.domain.entities import Topic, Test, Question, TestAttempt, MonthlyStats
 
 
 class ITopicRepository(IBaseRepository[Topic], ABC):
@@ -29,6 +29,11 @@ class ITestRepository(IBaseRepository[Test], ABC):
     @abstractmethod
     async def find_reusable_for_user(self, topic_id: int, user_id: int) -> Test | None:
         """Готовый тест по теме, который юзер ещё НЕ проходил."""
+        ...
+
+    @abstractmethod
+    async def add_questions(self, questions: list[Question]) -> list[Question]:
+        """Bulk-insert вопросов теста после успешной генерации."""
         ...
 
 
