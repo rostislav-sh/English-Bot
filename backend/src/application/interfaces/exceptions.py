@@ -6,12 +6,32 @@ RepositoryError означает «программный баг» и не ло�
 """
 
 
-class UniqueViolationError(Exception):
-    """Нарушено уникальное ограничение (email, google_id и т.п.).
-
-    Бросается реализацией репозитория при попытке вставить дубликат.
-    Сервис обязан перехватить и сконвертировать в бизнес-ошибку.
+class RepositoryIntegrityError(Exception):
     """
-    def __init__(self, message: str = "Нарушено уникальное ограничение.") -> None:
-        super().__init__(message)
-        self.message = message
+    Базовая ошибка нарушения целостности БД при записи.
+
+    Бросается реализацией репозитория, когда Postgres отклонил INSERT/UPDATE
+    из-за нарушенного ограничения. Конкретный подкласс говорит, какое именно —
+    сервис обязан перехватить и сконвертировать в бизнес-ошибку.
+    """
+    message: str = "Нарушено ограничение целостности БД."
+
+    def __init__(self, message: str | None = None) -> None:
+        super().__init__(message or self.message)
+        if message:
+            self.message = message
+
+
+class UniqueViolationError(RepositoryIntegrityError):
+    """Нарушено уникальное ограничение (email, normalized_name и т.п.) — дубликат."""
+    message = "Нарушено уникальное ограничение."
+
+
+class ForeignKeyViolationError(RepositoryIntegrityError):
+    """Ссылка на строку, которой не существует в связанной таблице."""
+    message = "Нарушено ограничение внешнего ключа: связанная запись не найдена."
+
+
+class CheckViolationError(RepositoryIntegrityError):
+    """Нарушено CHECK-ограничение (например, score <= total_questions)."""
+    message = "Нарушено ограничение целостности данных."
