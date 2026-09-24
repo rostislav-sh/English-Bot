@@ -50,6 +50,7 @@ class TestService:
         # стандартный Celery-способ асинхронно поставить таску в очередь, не дожидаясь её выполнения.
         task = generate_test_task.delay(created.id, topic.name)
 
+        # сохраняем id таски в бд
         created.generation_task_id = task.id
         await self._uow.tests.update(created)
         await self._uow.commit()

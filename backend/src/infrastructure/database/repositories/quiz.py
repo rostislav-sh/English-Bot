@@ -131,9 +131,11 @@ class SQLAlchemyTestRepository(SQLAlchemyBaseRepository[Test], ITestRepository):
 
     async def get_with_questions(self, test_id: int) -> Test | None:
         """Загружает тест вместе с вопросами (eager-load)."""
+        # scalar - извлекает данные из кортежа и возвращает первый элемент в формате модели
         model = await self._session.scalar(
             select(TestModel)
             .where(TestModel.id == test_id)
+            # заранее подгружаем questions (при async нет lazy load)
             .options(selectinload(TestModel.questions))
         )
         if model is None:
