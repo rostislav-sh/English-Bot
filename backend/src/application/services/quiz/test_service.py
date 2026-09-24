@@ -2,8 +2,6 @@
 
 import logging
 
-from sqlalchemy.ext.asyncio import result
-
 from src.application.interfaces.unitofwork import IUnitOfWork
 from src.application.services.quiz.topic_service import TopicService
 from src.domain.entities import Test
