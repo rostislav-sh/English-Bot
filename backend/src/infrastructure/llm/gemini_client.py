@@ -130,10 +130,13 @@ class GeminiClient(ILLMClient):
 
         if code == 429:
             return LLMRateLimitError(f"Превышен лимит скорости Gemini: {e}")
-        if code is not None and 500 <= code < 600:
-            return LLMServiceUnavailableError(f"Gemini server error {code}: {e}")
+        # 408/504 — таймауты. Проверяем ДО общего диапазона 5xx: 504 попадает
+        # и туда, и туда, но именно как таймаут его должен ловить короткий
+        # локальный ретрай tenacity, а не медленный ретрай через Celery.
         if code in (408, 504):
             return LLMTimeoutError(f"Gemini gateway timeout {code}: {e}")
+        if code is not None and 500 <= code < 600:
+            return LLMServiceUnavailableError(f"Gemini server error {code}: {e}")
 
-            # 4xx (кроме 429) — обычно невалидный запрос, ретраить бессмысленно
+        # 4xx (кроме 429) — обычно невалидный запрос, ретраить бессмысленно
         return LLMError(f"Gemini API error {code}: {e}")
