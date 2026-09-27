@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { getAttempt, waitForRecommendation } from '../api/quiz'
+import BackLink from '../components/BackLink'
 import type { AttemptOut } from '../api/types/quiz'
 
 export default function AttemptPage() {
@@ -46,6 +47,7 @@ export default function AttemptPage() {
 	if (loading) {
 		return (
 			<main className="page">
+				<BackLink />
 				<p className="muted">Loading result...</p>
 			</main>
 		)
@@ -54,6 +56,7 @@ export default function AttemptPage() {
 	if (!attempt) {
 		return (
 			<main className="page">
+				<BackLink />
 				<h1>Result</h1>
 				{error ? <div className="alert alert--error">{error}</div> : <p className="muted">Attempt not found.</p>}
 				<Link to="/dashboard">Back to dashboard</Link>
@@ -63,6 +66,7 @@ export default function AttemptPage() {
 
 	return (
 		<main className="page">
+			<BackLink />
 			<h1>{title}</h1>
 			<section className="card card--wide">
 				<div className="kv">

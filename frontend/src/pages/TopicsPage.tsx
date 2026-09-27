@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { listTopics, requestTest, waitForTestReady } from '../api/quiz'
+import BackLink from '../components/BackLink'
 import type { TopicOut } from '../api/types/quiz'
 
 export default function TopicsPage() {
@@ -64,6 +65,7 @@ export default function TopicsPage() {
 
 	return (
 		<main className="page">
+			<BackLink />
 			<h1>Choose a topic</h1>
 			<p className="muted page__lead">
 				Pick a topic to generate a quiz. If the test is still generating, the page will wait until it is ready.
