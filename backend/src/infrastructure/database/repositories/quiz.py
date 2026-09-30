@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from src.application.interfaces.repositories import (
     ITopicRepository, ITestRepository, IAttemptRepository,
 )
-from src.domain.entities import Topic, Test, TestAttempt, TestStatus, MonthlyStats
+from src.domain.entities import Topic, Test, Question, TestAttempt, TestStatus, MonthlyStats
 from src.infrastructure.database.repositories.base import SQLAlchemyBaseRepository
 from src.infrastructure.database.models import (
     TopicModel, TestModel,
@@ -20,6 +20,7 @@ from src.infrastructure.database.models import (
 from src.infrastructure.database.mappers.quiz import (
     topic_entity_to_model, topic_model_to_entity,
     test_entity_to_model, test_model_to_entity, update_test_model_from_entity,
+    question_entity_to_model, question_model_to_entity,
     attempt_entity_to_model, attempt_model_to_entity, update_attempt_model_from_entity,
 )
 
@@ -130,9 +131,11 @@ class SQLAlchemyTestRepository(SQLAlchemyBaseRepository[Test], ITestRepository):
 
     async def get_with_questions(self, test_id: int) -> Test | None:
         """Загружает тест вместе с вопросами (eager-load)."""
+        # scalar - извлекает данные из кортежа и возвращает первый элемент в формате модели
         model = await self._session.scalar(
             select(TestModel)
             .where(TestModel.id == test_id)
+            # заранее подгружаем questions (при async нет lazy load)
             .options(selectinload(TestModel.questions))
         )
         if model is None:
@@ -191,6 +194,18 @@ class SQLAlchemyTestRepository(SQLAlchemyBaseRepository[Test], ITestRepository):
         entity = test_model_to_entity(model, with_questions=True)
         self._identity_map[id(entity)] = (entity, model)
         return entity
+
+    async def add_questions(self, questions: list[Question]) -> list[Question]:
+        """
+        Bulk-insert вопросов после успешной генерации теста Celery-таской.
+
+        Question иммутабелен (см. mappers/quiz.py) — обновлять их некому,
+        поэтому в identity map не регистрируем, только маппим обратно с id.
+        """
+        models = [question_entity_to_model(q) for q in questions]
+        self._session.add_all(models)
+        await self._session.flush() # для получения id
+        return [question_model_to_entity(m) for m in models] # обратно превращаем из model алхимии в python model
 
 
 # ════════════════════════════════════════

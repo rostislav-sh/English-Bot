@@ -8,13 +8,30 @@ from typing import TypeVar, Callable
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.interfaces.exceptions import UniqueViolationError
+from src.application.interfaces.exceptions import (
+    RepositoryIntegrityError,
+    UniqueViolationError,
+    ForeignKeyViolationError,
+    CheckViolationError,
+)
 from src.application.interfaces.repositories import IBaseRepository
 from src.domain.exceptions import EntityNotFoundError, MissingEntityIdError
 
 logger = logging.getLogger(__name__)
 
 T_Entity = TypeVar("T_Entity")
+
+# SQLSTATE-коды Postgres → тип нарушенного ограничения.
+# asyncpg прокидывает исходный sqlstate на e.orig (см. sqlalchemy's
+# AsyncAdapt_asyncpg_dbapi._handle_exception: translated_error.sqlstate = error.sqlstate),
+# поэтому это надёжнее, чем парсить текст сообщения.
+# ключ - код, значение - класс (не экземпляр!), являющийся подклассом RepositoryIntegrityError.
+# type[RepositoryIntegrityError] — это типизация "класс, а не объект".
+_SQLSTATE_TO_EXCEPTION: dict[str, type[RepositoryIntegrityError]] = {
+    "23505": UniqueViolationError,      # unique_violation
+    "23503": ForeignKeyViolationError,  # foreign_key_violation
+    "23514": CheckViolationError,       # check_violation
+}
 
 
 class SQLAlchemyBaseRepository(IBaseRepository[T_Entity], ABC):
@@ -122,14 +139,20 @@ class SQLAlchemyBaseRepository(IBaseRepository[T_Entity], ABC):
             await self._session.flush()
         except IntegrityError as e:
             entity_name = type(entity).__name__
+            # e.orig - изначальное исключение, которое возвращает бд
+            # парсим код ошибки Postgres
+            # getattr защищает от AttributeError, если нет e.orig
+            sqlstate = getattr(e.orig, "sqlstate", None)
+            # берем ошибку из _SQLSTATE_TO_EXCEPTION или возвращаем базовую
+            exc_cls = _SQLSTATE_TO_EXCEPTION.get(sqlstate, RepositoryIntegrityError)
             logger.warning(
-                "Конфликт ограничений БД при добавлении %s: %s",
-                entity_name, e.orig
+                "Конфликт ограничений БД при добавлении %s (sqlstate=%s, %s): %s",
+                entity_name, sqlstate, exc_cls.__name__, e.orig,
             )
-            # Переводим инфраструктурную ошибку в понятную для Application слоя
-            raise UniqueViolationError(
-                f"Нарушение уникальности при сохранении {entity_name}."
-            ) from e
+            # Переводим инфраструктурную ошибку в понятную для Application слоя,
+            # различая тип нарушенного ограничения — иначе, например, нарушенный
+            # внешний ключ выглядит для вызывающего кода как дубликат.
+            raise exc_cls(f"{exc_cls.message} ({entity_name})") from e
 
         result = self._track(model)
         logger.debug(

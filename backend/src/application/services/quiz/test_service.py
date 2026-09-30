@@ -26,8 +26,10 @@ class TestService:
         self._topic_service = topic_service
 
     async def request_test(self, user_id: int, topic_name: str) -> Test:
+        # создаем или получаем тему теста
         topic = await self._topic_service.get_or_create_topic(topic_name)
 
+        # получаем тест, которы юзер не проходил или None -> генерируем
         reusable = await self._uow.tests.find_reusable_for_user(topic.id, user_id)
         if reusable is not None:
             logger.debug(
@@ -35,6 +37,7 @@ class TestService:
             )
             return reusable
 
+        # создаем тест
         test = Test(topic_id=topic.id, status=TestStatus.GENERATING)
         created = await self._uow.tests.add(test)
         # Коммитим сразу: тест должен быть виден воркеру Celery до того,
@@ -44,8 +47,10 @@ class TestService:
         # Локальный импорт: application-слой не должен тянуть Celery на этапе
         # импорта модуля (нужен только при реальном запросе генерации).
         from src.infrastructure.tasks.jobs.test_generation import generate_test_task
+        # стандартный Celery-способ асинхронно поставить таску в очередь, не дожидаясь её выполнения.
         task = generate_test_task.delay(created.id, topic.name)
 
+        # сохраняем id таски в бд
         created.generation_task_id = task.id
         await self._uow.tests.update(created)
         await self._uow.commit()

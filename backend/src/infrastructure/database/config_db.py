@@ -1,14 +1,13 @@
-"""Конфигурация подключения к PostgreSQL (async SQLAlchemy)."""
+"""Конфигурация подключения к PostgreSQL (async SQLAlchemy) для FastAPI."""
 
 import logging
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from src.config import settings
+from src.infrastructure.database.engine import create_session_factory
 
 logger = logging.getLogger(__name__)
 
-engine = create_async_engine(url=settings.database_url)
+# Engine FastAPI-приложения: один event loop на всё время жизни процесса,
+# поэтому используем пул соединений по умолчанию.
+session_factory = create_session_factory(settings.database_url)
 logger.info("Async SQLAlchemy engine создан: %s", settings.db_host)
-
-session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
