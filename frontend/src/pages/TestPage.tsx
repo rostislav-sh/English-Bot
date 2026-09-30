@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { getTest, submitTest, waitForTestReady } from '../api/quiz'
+import BackLink from '../components/BackLink'
 import type { TestOut } from '../api/types/quiz'
 
 function optionLabel(option: unknown): string {
@@ -50,10 +51,11 @@ export default function TestPage() {
 		}
 	}, [numericId])
 
-	const unanswered = useMemo(() => {
-		if (!test) return []
-		return test.questions.filter((question) => !answers[question.id])
+	const answeredCount = useMemo(() => {
+		if (!test) return 0
+		return test.questions.filter((question) => Boolean(answers[question.id])).length
 	}, [answers, test])
+	const unansweredCount = test ? test.questions.length - answeredCount : 0
 
 	async function onSubmit(e: FormEvent) {
 		e.preventDefault()
@@ -79,6 +81,7 @@ export default function TestPage() {
 	if (loading) {
 		return (
 			<main className="page">
+				<BackLink fallback="/topics" />
 				<p className="muted">Loading test...</p>
 			</main>
 		)
@@ -87,6 +90,7 @@ export default function TestPage() {
 	if (!test || test.status !== 'ready') {
 		return (
 			<main className="page">
+				<BackLink fallback="/topics" />
 				<h1>Test</h1>
 				{error ? <div className="alert alert--error">{error}</div> : <p className="muted">Test is not ready.</p>}
 				<Link to="/topics">Back to topics</Link>
@@ -96,6 +100,7 @@ export default function TestPage() {
 
 	return (
 		<main className="page">
+			<BackLink fallback="/topics" />
 			<h1>Quiz</h1>
 			<p className="muted page__lead">Answer every question, then submit the whole test at once.</p>
 
@@ -129,13 +134,17 @@ export default function TestPage() {
 				))}
 
 				{error ? <div className="alert alert--error">{error}</div> : null}
-				{unanswered.length > 0 ? (
-					<p className="muted">Answered {test.questions.length - unanswered.length} of {test.questions.length}.</p>
-				) : (
-					<p className="muted">All questions answered.</p>
-				)}
+				<p className="quiz-progress" translate="no">
+					{unansweredCount > 0 ? (
+						<>
+							Answered <strong key={answeredCount}>{answeredCount}</strong> of {test.questions.length}.
+						</>
+					) : (
+						'All questions answered.'
+					)}
+				</p>
 
-				<button className="btn" type="submit" disabled={pending || unanswered.length > 0}>
+				<button className="btn" type="submit" disabled={pending || unansweredCount > 0}>
 					{pending ? 'Submitting...' : 'Submit answers'}
 				</button>
 			</form>

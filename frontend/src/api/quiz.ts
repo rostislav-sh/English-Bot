@@ -85,6 +85,16 @@ export async function listAttempts(
 	return getJson<AttemptHistoryItemOut[]>(`/attempts?${params.toString()}`)
 }
 
+export async function listAllAttempts(pageSize = 100): Promise<AttemptHistoryItemOut[]> {
+	const items: AttemptHistoryItemOut[] = []
+	for (let offset = 0; offset < 1000; offset += pageSize) {
+		const page = await listAttempts(pageSize, offset)
+		items.push(...page)
+		if (page.length < pageSize) break
+	}
+	return items
+}
+
 export async function getMonthlyStats(months = 12): Promise<MonthlyStatOut[]> {
 	const params = new URLSearchParams({ months: String(months) })
 	return getJson<MonthlyStatOut[]>(`/attempts/stats/monthly?${params.toString()}`)

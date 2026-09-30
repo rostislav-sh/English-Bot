@@ -2,10 +2,29 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { refresh } from '../api/auth'
-import { getMonthlyStats, listAttempts } from '../api/quiz'
+import { listAllAttempts } from '../api/quiz'
 import { useAuth } from '../auth/useAuth'
 import StatsChart from '../components/StatsChart'
-import type { AttemptHistoryItemOut, MonthlyStatOut } from '../api/types/quiz'
+import type { StatsChartPoint } from '../components/StatsChart'
+import type { AttemptHistoryItemOut } from '../api/types/quiz'
+
+const PERIODS = [
+	{ id: '7d', label: '7 days', ms: 7 * 24 * 60 * 60 * 1000 },
+	{ id: '30d', label: '30 days', ms: 30 * 24 * 60 * 60 * 1000 },
+	{ id: '90d', label: '90 days', ms: 90 * 24 * 60 * 60 * 1000 },
+	{ id: '365d', label: 'Year', ms: 365 * 24 * 60 * 60 * 1000 },
+	{ id: 'all', label: 'All', ms: null },
+] as const
+
+type PeriodId = (typeof PERIODS)[number]['id']
+
+function inPeriod(createdAt: string | null, ms: number | null): boolean {
+	if (ms === null) return true
+	if (!createdAt) return false
+	const time = new Date(createdAt).getTime()
+	if (Number.isNaN(time)) return false
+	return time >= Date.now() - ms
+}
 
 function errorMessageFromGoogleAuthError(authError: string | null): string | null {
 	if (!authError) return null
@@ -35,7 +54,7 @@ export default function DashboardPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [lastAction, setLastAction] = useState<string | null>(null)
 	const [history, setHistory] = useState<AttemptHistoryItemOut[]>([])
-	const [stats, setStats] = useState<MonthlyStatOut[]>([])
+	const [period, setPeriod] = useState<PeriodId>('30d')
 	const [loadingQuiz, setLoadingQuiz] = useState(true)
 
 	const googleAuthError = useMemo(() => {
@@ -46,11 +65,10 @@ export default function DashboardPage() {
 	useEffect(() => {
 		let cancelled = false
 		setLoadingQuiz(true)
-		Promise.all([listAttempts(), getMonthlyStats()])
-			.then(([attempts, monthly]) => {
+		listAllAttempts()
+			.then((attempts) => {
 				if (cancelled) return
 				setHistory(attempts)
-				setStats(monthly)
 			})
 			.catch((err: unknown) => {
 				if (cancelled) return
@@ -64,6 +82,25 @@ export default function DashboardPage() {
 			cancelled = true
 		}
 	}, [])
+
+	const periodMs = PERIODS.find((item) => item.id === period)?.ms ?? null
+	const visibleHistory = useMemo(
+		() => history.filter((item) => inPeriod(item.created_at, periodMs)),
+		[history, periodMs],
+	)
+	const chartPoints = useMemo<StatsChartPoint[]>(
+		() =>
+			visibleHistory
+				.filter((item) => item.created_at)
+				.map((item) => ({
+					id: String(item.id),
+					at: item.created_at ?? '',
+					accuracy: item.percentage,
+					score: item.score,
+					totalQuestions: item.total_questions,
+				})),
+		[visibleHistory],
+	)
 
 	async function handleRefresh() {
 		setError(null)
@@ -114,18 +151,32 @@ export default function DashboardPage() {
 			</section>
 
 			<section className="card card--wide">
-				<h2 className="card__title">Monthly stats</h2>
+				<h2 className="card__title">Stats</h2>
+				<div className="period" role="group" aria-label="Stats period">
+					{PERIODS.map((item) => (
+						<button
+							key={item.id}
+							className={item.id === period ? 'period__btn period__btn--active' : 'period__btn'}
+							type="button"
+							onClick={() => setPeriod(item.id)}
+						>
+							{item.label}
+						</button>
+					))}
+				</div>
 				{loadingQuiz ? <p className="muted">Loading stats...</p> : null}
-				{!loadingQuiz && stats.length === 0 ? <p className="muted">No attempts this period yet.</p> : null}
-				{!loadingQuiz && stats.length > 0 ? <StatsChart stats={stats} /> : null}
+				{!loadingQuiz && chartPoints.length === 0 ? <p className="muted">No attempts in this period.</p> : null}
+				{!loadingQuiz && chartPoints.length > 0 ? <StatsChart key={period} points={chartPoints} /> : null}
 			</section>
 
 			<section className="card card--wide">
 				<h2 className="card__title">Recent attempts</h2>
 				{loadingQuiz ? <p className="muted">Loading history...</p> : null}
-				{!loadingQuiz && history.length === 0 ? <p className="muted">No quiz attempts yet.</p> : null}
+				{!loadingQuiz && visibleHistory.length === 0 ? (
+					<p className="muted">{history.length === 0 ? 'No quiz attempts yet.' : 'No attempts in this period.'}</p>
+				) : null}
 				<ul className="history-list">
-					{history.map((item) => (
+					{visibleHistory.map((item) => (
 						<li key={item.id}>
 							<Link to={`/attempts/${item.id}`}>
 								<span>

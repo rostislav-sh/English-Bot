@@ -1,58 +1,72 @@
 import { useMemo, useState } from 'react'
-import type { MonthlyStatOut } from '../api/types/quiz'
 
-type Props = {
-	stats: MonthlyStatOut[]
+export type StatsChartPoint = {
+	id: string
+	at: string
+	accuracy: number
+	score: number
+	totalQuestions: number
 }
 
-function monthDate(value: string): Date | null {
+type Props = {
+	points: StatsChartPoint[]
+}
+
+function pointDate(value: string): Date | null {
 	const date = new Date(value)
 	return Number.isNaN(date.getTime()) ? null : date
 }
 
-function monthLabel(value: string, withYear: boolean): string {
-	const date = monthDate(value)
+function dayKey(value: string): string {
+	const date = pointDate(value)
 	if (!date) return value
-	const label = date
-		.toLocaleDateString(undefined, withYear ? { month: 'short', year: '2-digit' } : { month: 'short' })
-		.replace('.', '')
-	return label.charAt(0).toLocaleUpperCase() + label.slice(1)
+	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 }
 
-function monthTitle(value: string): string {
-	const date = monthDate(value)
+function axisLabel(value: string, withTime: boolean): string {
+	const date = pointDate(value)
 	if (!date) return value
-	return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+	const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).replace('.', '')
+	if (!withTime) return day
+	const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+	return `${day} ${time}`
 }
 
-function attemptsLabel(count: number): string {
-	return count === 1 ? '1 attempt' : `${count} attempts`
+function pointTitle(value: string): string {
+	const date = pointDate(value)
+	if (!date) return value
+	return date.toLocaleString()
 }
 
-export default function StatsChart({ stats }: Props) {
-	const points = useMemo(
-		() => [...stats].sort((a, b) => a.month.localeCompare(b.month)),
-		[stats],
+export default function StatsChart({ points }: Props) {
+	const ordered = useMemo(
+		() => [...points].sort((a, b) => a.at.localeCompare(b.at)),
+		[points],
 	)
-	const [active, setActive] = useState(Math.max(0, points.length - 1))
-	const selectedIndex = points[active] ? active : points.length - 1
-	const selected = points[selectedIndex]
+	const [active, setActive] = useState(Math.max(0, ordered.length - 1))
+	const selectedIndex = ordered[active] ? active : ordered.length - 1
+	const selected = ordered[selectedIndex]
 
 	const totals = useMemo(() => {
-		return points.reduce(
+		return ordered.reduce(
 			(acc, item) => {
-				acc.attempts += item.attempts_count
-				acc.score += item.total_score
-				acc.questions += item.total_questions
+				acc.score += item.score
+				acc.questions += item.totalQuestions
 				return acc
 			},
-			{ attempts: 0, score: 0, questions: 0 },
+			{ score: 0, questions: 0 },
 		)
-	}, [points])
+	}, [ordered])
 
 	const overallAccuracy = totals.questions === 0 ? 0 : (totals.score / totals.questions) * 100
-	const years = new Set(points.map((item) => monthDate(item.month)?.getFullYear()).filter((year) => year !== undefined))
-	const showYear = years.size > 1
+	const dayCounts = useMemo(() => {
+		const counts = new Map<string, number>()
+		for (const item of ordered) {
+			const key = dayKey(item.at)
+			counts.set(key, (counts.get(key) ?? 0) + 1)
+		}
+		return counts
+	}, [ordered])
 
 	const width = 640
 	const height = 236
@@ -60,10 +74,11 @@ export default function StatsChart({ stats }: Props) {
 	const innerW = width - pad.left - pad.right
 	const innerH = height - pad.top - pad.bottom
 	const baseline = pad.top + innerH
+	const labelStep = Math.max(1, Math.ceil(ordered.length / 6))
 
-	const coords = points.map((item, index) => {
+	const coords = ordered.map((item, index) => {
 		const accuracy = Math.min(100, Math.max(0, item.accuracy))
-		const x = points.length === 1 ? pad.left + innerW * 0.08 : pad.left + (innerW * index) / (points.length - 1)
+		const x = ordered.length === 1 ? pad.left + innerW * 0.08 : pad.left + (innerW * index) / (ordered.length - 1)
 		const y = baseline - (accuracy / 100) * innerH
 		return { x, y, accuracy }
 	})
@@ -79,8 +94,8 @@ export default function StatsChart({ stats }: Props) {
 		<div className="stats">
 			<div className="stats__summary">
 				<div className="stats__metric">
-					<span>Attempts</span>
-					<strong>{totals.attempts}</strong>
+					<span>Tests</span>
+					<strong>{ordered.length}</strong>
 				</div>
 				<div className="stats__metric stats__metric--accent">
 					<span>Accuracy</span>
@@ -96,7 +111,7 @@ export default function StatsChart({ stats }: Props) {
 			</div>
 
 			<div className="stats-plot">
-				<svg className="stats-line" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Monthly accuracy">
+				<svg className="stats-line" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Accuracy by test">
 					<defs>
 						<linearGradient id="stats-area-fill" x1="0" y1="0" x2="0" y2="1">
 							<stop offset="0%" stopColor="var(--accent)" stopOpacity="0.38" />
@@ -124,44 +139,46 @@ export default function StatsChart({ stats }: Props) {
 					) : null}
 					{focus ? (
 						<>
-							<line
-								className="stats-line__price"
-								x1={focus.x}
-								x2={width - pad.right}
-								y1={focus.y}
-								y2={focus.y}
-							/>
+							<line className="stats-line__price" x1={focus.x} x2={width - pad.right} y1={focus.y} y2={focus.y} />
 							<text className="stats-line__badge" x={focus.x} y={Math.max(14, focus.y - 12)} textAnchor="middle">
 								{Math.round(focus.accuracy)}%
 							</text>
 						</>
 					) : null}
 
-					{coords.map((point, index) => (
-						<g key={points[index].month}>
-							<circle
-								className={index === selectedIndex ? 'stats-line__halo' : 'stats-line__halo stats-line__halo--idle'}
-								cx={point.x}
-								cy={point.y}
-								r={index === selectedIndex ? 9 : 0}
-							/>
-							<circle
-								className={index === selectedIndex ? 'stats-line__dot stats-line__dot--active' : 'stats-line__dot'}
-								cx={point.x}
-								cy={point.y}
-								r={index === selectedIndex ? 4.5 : 3.5}
-							/>
-							<text className="stats-line__label" x={point.x} y={height - 12} textAnchor="middle">
-								{monthLabel(points[index].month, showYear)}
-							</text>
-						</g>
-					))}
+					{coords.map((point, index) => {
+						const item = ordered[index]
+						const showLabel = index === 0 || index === ordered.length - 1 || index % labelStep === 0
+						const withTime = (dayCounts.get(dayKey(item.at)) ?? 0) > 1
+						return (
+							<g key={item.id}>
+								<circle
+									className={index === selectedIndex ? 'stats-line__halo' : 'stats-line__halo stats-line__halo--idle'}
+									cx={point.x}
+									cy={point.y}
+									r={index === selectedIndex ? 9 : 0}
+								/>
+								<circle
+									className={index === selectedIndex ? 'stats-line__dot stats-line__dot--active' : 'stats-line__dot'}
+									cx={point.x}
+									cy={point.y}
+									r={index === selectedIndex ? 4.5 : 3.5}
+								/>
+								{showLabel ? (
+									<text className="stats-line__label" x={point.x} y={height - 12} textAnchor="middle">
+										{axisLabel(item.at, withTime)}
+									</text>
+								) : null}
+							</g>
+						)
+					})}
 
 					{coords.map((point, index) => {
-						const slot = points.length <= 1 ? 80 : innerW / points.length
+						const slot = ordered.length <= 1 ? 80 : innerW / ordered.length
+						const item = ordered[index]
 						return (
 							<rect
-								key={`${points[index].month}-hit`}
+								key={`${item.id}-hit`}
 								className="stats-line__hit"
 								x={point.x - slot / 2}
 								y={pad.top}
@@ -171,8 +188,7 @@ export default function StatsChart({ stats }: Props) {
 								onClick={() => setActive(index)}
 							>
 								<title>
-									{monthTitle(points[index].month)}: {Math.round(point.accuracy)}%,{' '}
-									{attemptsLabel(points[index].attempts_count)}
+									{pointTitle(item.at)}: {item.score}/{item.totalQuestions} · {Math.round(point.accuracy)}%
 								</title>
 							</rect>
 						)
@@ -182,10 +198,9 @@ export default function StatsChart({ stats }: Props) {
 
 			{selected ? (
 				<p className="stats__detail">
-					<strong>{monthTitle(selected.month)}</strong>
+					<strong>{pointTitle(selected.at)}</strong>
 					<span>
-						{attemptsLabel(selected.attempts_count)} · {Math.round(selected.accuracy)}% · {selected.total_score}/
-						{selected.total_questions}
+						{selected.score}/{selected.totalQuestions} · {Math.round(selected.accuracy)}%
 					</span>
 				</p>
 			) : null}
