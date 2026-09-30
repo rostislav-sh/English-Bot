@@ -42,6 +42,9 @@ class GeminiClient(ILLMClient):
         • 429 и 5xx превращаются в типизированные исключения,
           которые ловит Celery autoretry_for и откладывает задачу
           с countdown — воркер при этом не блокируется.
+        • Держит сетевую сессию SDK: после работы клиент нужно закрыть
+          через aclose() в том же event loop-е (в Celery-тасках это делает
+          create_task_llm_client из tasks/llm_deps.py).
     """
     def __init__(self, *, api_key: str, model: str, timeout_seconds: float, max_retries: int) -> None:
         # Звездочка * в аргументах заставляет передавать параметры только по имени (GeminiClient(api_key="...", ...)).
@@ -50,7 +53,10 @@ class GeminiClient(ILLMClient):
         self._timeout_ms = int(timeout_seconds * 1000)
         self._max_retries = max_retries
 
-        # google-genai создаёт собственный httpx-клиент под капотом.
+        # google-genai создаёт HTTP-клиент под капотом: для async-вызовов это
+        # aiohttp-сессия (если aiohttp установлен), иначе httpx. Сессия без лимита
+        # соединений и закрывается только при сборке мусора — поэтому после
+        # работы клиент нужно явно закрыть через aclose().
         # Таймаут пробрасываем через http_options.
         self._client = genai.Client(
             api_key=api_key,
@@ -76,6 +82,10 @@ class GeminiClient(ILLMClient):
         runner = self._build_retrying_call()
         return await runner(prompt, json_mode)
 
+    async def aclose(self) -> None:
+        """Закрывает async-сессию SDK и её соединения к Gemini."""
+        await self._client.aio.aclose()
+
     def _build_retrying_call(self):
         """
         Строит обёртку с tenacity-ретраями на основе self._max_retries.
@@ -89,7 +99,9 @@ class GeminiClient(ILLMClient):
             wait=wait_exponential(multiplier=0.5, min=0.5, max=2.0),
             retry=retry_if_exception_type(_TRANSIENT_FOR_TENACITY),
             before_sleep=before_sleep_log(logger, logging.WARNING),
-            reraise=False,
+            # True: после исчерпания попыток наверх уходит исходный LLMTimeoutError,
+            # а не tenacity.RetryError (он не LLMError, и джобы его не перехватывают).
+            reraise=True,
         )(self._do_complete)
 
     async def _do_complete(self, prompt: str, json_mode: bool) -> str:
