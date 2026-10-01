@@ -123,7 +123,7 @@ services:
     init: true
     # Даём worker время на завершение текущих задач при остановке.
     # Должно быть не меньше жёсткого лимита LLM-тасок (LLM_TASK_TIME_LIMIT
-    # в src/infrastructure/tasks/llm_deps.py, сейчас 144 с): Celery по умолчанию
+    # в src/infrastructure/tasks/llm_deps.py, сейчас 82 с): Celery по умолчанию
     # подтверждает задачу в брокере при старте, поэтому если Docker убьёт
     # воркер посреди генерации, таска потеряется, а тест/рекомендация навсегда
     # останутся в GENERATING/PENDING. При изменении GEMINI_TIMEOUT_SECONDS или
