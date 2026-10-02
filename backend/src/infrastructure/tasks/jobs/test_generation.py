@@ -10,6 +10,8 @@ from celery.utils.log import get_task_logger
 
 from src.infrastructure.tasks.celery_config import celery_app
 from src.infrastructure.tasks.db import create_task_uow
+from src.infrastructure.tasks.notify import notify_status_changed
+from src.infrastructure.redis.channels import channel_for_test
 from src.infrastructure.tasks.llm_deps import (
     LLM_TASK_SOFT_TIME_LIMIT,
     LLM_TASK_TIME_LIMIT,
@@ -125,6 +127,10 @@ class _GenerateTestTask(celery_app.Task):
             asyncio.run(_mark_failed(test_id))
         except Exception:
             logger.exception("on_failure: не удалось пометить тест id=%s как FAILED", test_id)
+        # Публикуем, даже если _mark_failed ничего не изменил (тест уже не
+        # GENERATING) или сам упал: лишнее «перечитай» безвредно — фронт
+        # просто увидит текущий статус, а проверка «изменилось ли» усложнила бы код.
+        notify_status_changed(channel_for_test(test_id))
 
 
 async def _create_and_run(test_id: int, topic_name: str) -> str:
@@ -160,4 +166,15 @@ def generate_test_task(test_id: int, topic_name: str) -> str:
     result = asyncio.run(_create_and_run(test_id, topic_name))
 
     logger.info("Генерация теста id=%s завершена: %s", test_id, result)
+    # Публикуем здесь, а не внутри _generate_and_save после commit:
+    #  • раз asyncio.run вернул управление, транзакция закоммичена и сессия
+    #    закрыта — фронт, получив событие и сделав GET, гарантированно увидит
+    #    новый статус;
+    #  • _generate_and_save остаётся бизнес-логикой на uow + llm_client,
+    #    без Redis — её проще тестировать.
+    # Сюда доходим при READY и FAILED (оба ставятся внутри _generate_and_save).
+    # На 429/5xx autoretry_for превращает исключение в Retry и бросает его
+    # из asyncio.run — до этой строки не доходим, и это верно: статус
+    # остался GENERATING, будить фронт незачем.
+    notify_status_changed(channel_for_test(test_id))
     return result

@@ -10,6 +10,8 @@ from celery.utils.log import get_task_logger
 
 from src.infrastructure.tasks.celery_config import celery_app
 from src.infrastructure.tasks.db import create_task_uow
+from src.infrastructure.tasks.notify import notify_status_changed
+from src.infrastructure.redis.channels import channel_for_attempt
 from src.infrastructure.tasks.llm_deps import (
     LLM_TASK_SOFT_TIME_LIMIT,
     LLM_TASK_TIME_LIMIT,
@@ -127,6 +129,8 @@ class _GenerateRecommendationTask(celery_app.Task):
             asyncio.run(_mark_failed(attempt_id))
         except Exception:
             logger.exception("on_failure: не удалось пометить рекомендацию attempt_id=%s как FAILED", attempt_id)
+        # См. комментарий в on_failure test_generation.py.
+        notify_status_changed(channel_for_attempt(attempt_id))
 
 
 async def _create_and_run(attempt_id: int) -> str:
@@ -152,4 +156,7 @@ def generate_recommendation_task(attempt_id: int) -> str:
     result = asyncio.run(_create_and_run(attempt_id))
 
     logger.info("Генерация рекомендации attempt_id=%s завершена: %s", attempt_id, result)
+    # Почему после asyncio.run и почему не на autoretry — см. generate_test_task.
+    # Сюда доходим при READY, FAILED и NOT_NEEDED.
+    notify_status_changed(channel_for_attempt(attempt_id))
     return result
