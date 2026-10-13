@@ -5,19 +5,27 @@
 """
 
 import logging
+from functools import partial
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 
 from src.application.interfaces.quiz import TestServiceProtocol, AttemptServiceProtocol
 from src.application.services.quiz import TopicService
 from src.api.dependencies import (
     verify_csrf_token,
     get_current_user_id_from_access_token,
+    get_current_user_id_without_csrf,
     get_topic_service,
     get_test_service,
     get_attempt_service,
+    open_test_service,
+    open_attempt_service,
 )
+from src.api.sse import status_events_response
+from src.domain.enums import RecommendationStatus, TestStatus
+from src.infrastructure.redis.channels import channel_for_attempt, channel_for_test
 from src.api.schemas.quiz import (
     TopicOut,
     RequestTestIn,
@@ -177,6 +185,82 @@ async def get_monthly_stats(
         )
         for s in stats
     ]
+
+
+# ── SSE: уведомления о завершении генерации ─────────────────────────
+#
+# Особенности обоих эндпоинтов (подробно — в src/api/sse.py):
+#  • без verify_csrf_token: EventSource не умеет слать заголовки, а эндпоинты
+#    только читают — см. get_current_payload_without_csrf;
+#  • без Depends(get_uow): сессия БД открывается только на короткие чтения
+#    статуса, а не на всё время жизни потока (open_*_service);
+#  • доступ проверяется ДО начала потока (внутри status_events_response) —
+#    чтобы 401/404 ушли обычным HTTP-ответом.
+#
+# Эндпоинты отличаются только каналом и функцией чтения статуса (_is_*_final);
+# partial фиксирует её аргументы, чтобы поток мог вызывать её без параметров.
+
+@router.get(
+    "/tests/{test_id}/events",
+    summary="SSE: дождаться окончания генерации теста",
+    response_class=StreamingResponse,
+)
+async def test_events(
+        test_id: int,
+        user_id: Annotated[int, Depends(get_current_user_id_without_csrf)],
+):
+    """Поток Server-Sent Events. Шлёт одно событие `status`, когда генерация
+    теста завершилась (или сразу, если уже завершена), и закрывается.
+    Данные теста фронт после события забирает через GET /tests/{id}.
+    """
+    return await status_events_response(
+        channel_for_test(test_id),
+        partial(_is_test_final, user_id, test_id),
+    )
+
+
+@router.get(
+    "/attempts/{attempt_id}/events",
+    summary="SSE: дождаться окончания генерации рекомендации",
+    response_class=StreamingResponse,
+)
+async def attempt_events(
+        attempt_id: int,
+        user_id: Annotated[int, Depends(get_current_user_id_without_csrf)],
+):
+    """Поток Server-Sent Events для рекомендации попытки — аналог
+    test_events. Данные после события — через GET /attempts/{id}.
+    """
+    return await status_events_response(
+        channel_for_attempt(attempt_id),
+        # functools.partial
+        # Она берёт другую функцию и часть её аргументов, а возвращает новую функцию, в которой эти аргументы уже подставлены
+        # Функция _is_attempt_final не вызывается, мы просто ее упаковали с ее аргументами.
+        partial(_is_attempt_final, user_id, attempt_id),
+    )
+
+
+async def _is_test_final(user_id: int, test_id: int) -> bool:
+    """Генерация теста завершена (READY/FAILED)?
+
+    Тот же сервис, что у GET /tests/{id}: тест не найден → TestNotFoundError → 404.
+    Проверки владельца у теста нет намеренно — тесты общие и
+    переиспользуются между пользователями (как и в get_test).
+    """
+    async with open_test_service() as service:
+        test = await service.get_test(user_id, test_id)
+    return test.status != TestStatus.GENERATING
+
+
+async def _is_attempt_final(user_id: int, attempt_id: int) -> bool:
+    """Генерация рекомендации завершена (READY/FAILED/NOT_NEEDED)?
+
+    get_attempt проверяет владельца: чужая попытка → AttemptNotFoundError → 404
+    (тот же ответ, что и для несуществующей — не раскрываем, что id занят).
+    """
+    async with open_attempt_service() as service:
+        attempt = await service.get_attempt(user_id, attempt_id)
+    return attempt.recommendation_status != RecommendationStatus.PENDING
 
 
 # ── Мапперы entity → schema ──────────────────────────────────────────
