@@ -95,6 +95,30 @@ async def get_current_payload(
     Зависит от verify_csrf_token — защищённые эндпоинты
     автоматически проверяют и CSRF, и токен.
     """
+    return decode_access_token(token)
+
+
+async def get_current_payload_without_csrf(
+    token: Annotated[str, Depends(get_token_from_cookie)],
+) -> dict:
+    """То же, что get_current_payload, но без проверки CSRF.
+
+    Только для read-only эндпоинтов, которые физически не могут прислать
+    заголовок X-CSRF-Token, — SSE-потоков (браузерный EventSource не умеет
+    задавать заголовки). Это безопасно: CSRF-атака — это заставить браузер
+    жертвы выполнить ИЗМЕНЯЮЩИЙ запрос с её cookie; такие эндпоинты ничего
+    не меняют, а прочитать ответ чужой сайт не даст CORS (allow_origins).
+    Изменяющие эндпоинты должны использовать get_current_payload.
+    """
+    return decode_access_token(token)
+
+
+def decode_access_token(token: str) -> dict:
+    """Проверяет подпись и срок жизни access-токена, возвращает payload.
+
+    Общая логика для обеих payload-зависимостей выше: правила проверки
+    токена живут в одном месте, отличается только наличие CSRF-проверки.
+    """
     try:
         payload = jwt.decode(
             token,

@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../api/http'
-import { getTest, submitTest, waitForTestReady } from '../api/quiz'
+import { getTest, isAbortError, submitTest, waitForTestReady } from '../api/quiz'
 import BackLink from '../components/BackLink'
 import type { TestOut } from '../api/types/quiz'
 
@@ -19,6 +19,36 @@ export default function TestPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [pending, setPending] = useState(false)
+	// Тест всё ещё генерируется после дедлайна опроса — предлагаем подождать ещё.
+	const [stalled, setStalled] = useState(false)
+	const pollRef = useRef<AbortController | null>(null)
+
+	const applyTest = useCallback((loaded: TestOut) => {
+		setTest(loaded)
+		if (loaded.status === 'failed') {
+			setError('Test generation failed.')
+		}
+	}, [])
+
+	const pollTest = useCallback((current: TestOut) => {
+		pollRef.current?.abort()
+		const controller = new AbortController()
+		pollRef.current = controller
+		setStalled(false)
+		setError(null)
+
+		void waitForTestReady(current, { signal: controller.signal })
+			.then(({ value, timedOut }) => {
+				applyTest(value)
+				setStalled(timedOut)
+			})
+			.catch((err: unknown) => {
+				if (isAbortError(err)) return
+				const apiErr = err as ApiError
+				setError(apiErr.detail ?? apiErr.message)
+				setStalled(true)
+			})
+	}, [applyTest])
 
 	useEffect(() => {
 		if (!Number.isFinite(numericId) || numericId <= 0) {
@@ -29,13 +59,10 @@ export default function TestPage() {
 
 		let cancelled = false
 		void getTest(numericId)
-			.then((loaded) => waitForTestReady(loaded))
-			.then((ready) => {
+			.then((loaded) => {
 				if (cancelled) return
-				setTest(ready)
-				if (ready.status === 'failed') {
-					setError('Test generation failed.')
-				}
+				applyTest(loaded)
+				if (loaded.status === 'generating') pollTest(loaded)
 			})
 			.catch((err: unknown) => {
 				if (cancelled) return
@@ -48,8 +75,9 @@ export default function TestPage() {
 
 		return () => {
 			cancelled = true
+			pollRef.current?.abort()
 		}
-	}, [numericId])
+	}, [numericId, applyTest, pollTest])
 
 	const answeredCount = useMemo(() => {
 		if (!test) return 0
@@ -83,6 +111,26 @@ export default function TestPage() {
 			<main className="page">
 				<BackLink fallback="/topics" />
 				<p className="muted">Loading test...</p>
+			</main>
+		)
+	}
+
+	if (test?.status === 'generating') {
+		return (
+			<main className="page">
+				<BackLink fallback="/topics" />
+				<h1>Test</h1>
+				{stalled ? (
+					<div className="alert alert--info">
+						<p>{error ?? 'Test generation is taking longer than usual.'}</p>
+						<button type="button" className="btn btn--secondary" onClick={() => pollTest(test)}>
+							Keep waiting
+						</button>
+					</div>
+				) : (
+					<p className="muted">Generating test...</p>
+				)}
+				<Link to="/topics">Back to topics</Link>
 			</main>
 		)
 	}

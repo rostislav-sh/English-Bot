@@ -1,10 +1,10 @@
 import type { FormEvent } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/http'
-import { listTopics, requestTest, waitForTestReady } from '../api/quiz'
+import { isAbortError, listTopics, requestTest, waitForTestReady } from '../api/quiz'
 import BackLink from '../components/BackLink'
-import type { TopicOut } from '../api/types/quiz'
+import type { TestOut, TopicOut } from '../api/types/quiz'
 
 export default function TopicsPage() {
 	const navigate = useNavigate()
@@ -12,7 +12,15 @@ export default function TopicsPage() {
 	const [customTopic, setCustomTopic] = useState('')
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)
-	const [pendingTopic, setPendingTopic] = useState<string | null>(null)
+	// Тема, по которой идёт запрос/ожидание, и уже созданный тест (если POST /tests прошёл).
+	// Пока waiting не null — старт новых тестов заблокирован, в том числе после
+	// таймаута опроса: повторный requestTest запустил бы вторую платную генерацию.
+	const [waiting, setWaiting] = useState<{ topic: string; test: TestOut | null } | null>(null)
+	const [stalled, setStalled] = useState(false)
+	const pollRef = useRef<AbortController | null>(null)
+	const pendingTopic = waiting?.topic ?? null
+
+	useEffect(() => () => pollRef.current?.abort(), [])
 
 	useEffect(() => {
 		let cancelled = false
@@ -33,27 +41,55 @@ export default function TopicsPage() {
 		}
 	}, [])
 
-	async function startTest(topicName: string) {
+	async function waitForTest(topicName: string, test: TestOut) {
+		pollRef.current?.abort()
+		const controller = new AbortController()
+		pollRef.current = controller
+		setWaiting({ topic: topicName, test })
+		setStalled(false)
 		setError(null)
-		setPendingTopic(topicName)
+
 		try {
-			const created = await requestTest({ topic_name: topicName })
-			const ready = await waitForTestReady(created)
-			if (ready.status === 'failed') {
+			const { value, timedOut } = await waitForTestReady(test, { signal: controller.signal })
+			if (timedOut) {
+				// Не сбрасываем waiting: «Keep waiting» продолжит опрос того же теста.
+				setWaiting({ topic: topicName, test: value })
+				setStalled(true)
+				return
+			}
+			setWaiting(null)
+			if (value.status === 'failed') {
 				setError('Test generation failed. Please try another topic.')
 				return
 			}
-			if (ready.status !== 'ready') {
-				setError('Test is still generating. Please retry in a moment.')
-				return
-			}
-			navigate(`/tests/${ready.id}`)
+			navigate(`/tests/${value.id}`)
+		} catch (err) {
+			if (isAbortError(err)) return
+			const apiErr = err as ApiError
+			// Тест уже создан и, возможно, ещё генерируется — даём продолжить ожидание.
+			setError(apiErr.detail ?? apiErr.message)
+			setStalled(true)
+		}
+	}
+
+	async function startTest(topicName: string) {
+		setError(null)
+		setWaiting({ topic: topicName, test: null })
+		try {
+			const created = await requestTest({ topic_name: topicName })
+			await waitForTest(topicName, created)
 		} catch (err) {
 			const apiErr = err as ApiError
 			setError(apiErr.detail ?? apiErr.message)
-		} finally {
-			setPendingTopic(null)
+			setWaiting(null)
 		}
+	}
+
+	function stopWaiting() {
+		pollRef.current?.abort()
+		setWaiting(null)
+		setStalled(false)
+		setError(null)
 	}
 
 	async function onCustomSubmit(e: FormEvent) {
@@ -71,7 +107,25 @@ export default function TopicsPage() {
 				Pick a topic to generate a quiz. If the test is still generating, the page will wait until it is ready.
 			</p>
 
-			{error ? <div className="alert alert--error">{error}</div> : null}
+			{stalled && waiting?.test ? (
+				<div className="alert alert--info">
+					<p>
+						{error ?? `"${waiting.topic}" is taking longer than usual to generate.`}
+					</p>
+					<button
+						type="button"
+						className="btn btn--secondary"
+						onClick={() => waiting.test && void waitForTest(waiting.topic, waiting.test)}
+					>
+						Keep waiting
+					</button>
+					<button type="button" className="btn btn--secondary" onClick={stopWaiting}>
+						Choose another topic
+					</button>
+				</div>
+			) : error ? (
+				<div className="alert alert--error">{error}</div>
+			) : null}
 
 			{loading ? <p className="muted">Loading topics...</p> : null}
 
