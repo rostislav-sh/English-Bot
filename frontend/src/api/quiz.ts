@@ -1,3 +1,4 @@
+import { apiUrl } from './config'
 import { ApiError, getJson, postJson } from './http'
 import type {
 	AttemptHistoryItemOut,
@@ -90,6 +91,80 @@ export async function pollUntil<T>(
 	return { value: current, timedOut: false }
 }
 
+type StatusEventOutcome = 'event' | 'error' | 'timeout'
+
+/**
+ * Открывает SSE-поток и ждёт одно событие `status` (бэкенд: src/api/sse.py).
+ * Любая ошибка потока (401/404, обрыв, Redis недоступен, закрытие сервером)
+ * → 'error': автопереподключение EventSource не используем, вызывающий
+ * откатывается на polling.
+ */
+function listenForStatusEvent(
+	path: string,
+	timeoutMs: number,
+	signal?: AbortSignal,
+): Promise<StatusEventOutcome> {
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted) {
+			reject(abortError())
+			return
+		}
+		// withCredentials — чтобы ушла access-cookie (API на другом origin).
+		const source = new EventSource(apiUrl(path), { withCredentials: true })
+		const finish = (done: () => void) => {
+			source.close()
+			window.clearTimeout(timer)
+			signal?.removeEventListener('abort', onAbort)
+			done()
+		}
+		const onAbort = () => finish(() => reject(abortError()))
+		const timer = window.setTimeout(() => finish(() => resolve('timeout')), timeoutMs)
+		// Событие именованное (`event: status`) — onmessage его не получит.
+		source.addEventListener('status', () => finish(() => resolve('event')))
+		source.onerror = () => finish(() => resolve('error'))
+		signal?.addEventListener('abort', onAbort, { once: true })
+	})
+}
+
+/**
+ * Ждёт окончания генерации: сначала через SSE, при любой проблеме — polling
+ * на оставшееся до дедлайна время. Контракт тот же, что у pollUntil.
+ */
+async function waitWithEvents<T>(
+	eventsPath: string,
+	initial: T,
+	load: () => Promise<T>,
+	isDone: (value: T) => boolean,
+	opts?: WaitOpts,
+): Promise<WaitResult<T>> {
+	if (isDone(initial)) return { value: initial, timedOut: false }
+	if (typeof EventSource === 'undefined') return pollUntil(initial, load, isDone, opts)
+
+	const signal = opts?.signal
+	const deadline = Date.now() + (opts?.timeoutMs ?? POLL_TIMEOUT_MS)
+	let current = initial
+
+	const outcome = await listenForStatusEvent(eventsPath, deadline - Date.now(), signal)
+	if (outcome === 'event') {
+		// Событие — только сигнал «перечитай», данные берём обычным GET.
+		try {
+			current = await load()
+			if (signal?.aborted) throw abortError()
+			if (isDone(current)) return { value: current, timedOut: false }
+		} catch (err) {
+			if (isAbortError(err) || !isTransientError(err)) throw err
+		}
+	}
+
+	// 'error' / 'timeout' / событие без финального статуса → polling на остаток.
+	// На 'timeout' остаток ≈ 0, и pollUntil сразу вернёт timedOut=true.
+	// Первый GET в pollUntil при истёкшем токене сделает refresh (requestJson).
+	return pollUntil(current, load, isDone, {
+		signal,
+		timeoutMs: Math.max(0, deadline - Date.now()),
+	})
+}
+
 export async function listTopics(): Promise<TopicOut[]> {
 	return getJson<TopicOut[]>('/topics')
 }
@@ -106,7 +181,13 @@ export async function waitForTestReady(
 	test: TestOut,
 	opts?: WaitOpts,
 ): Promise<WaitResult<TestOut>> {
-	return pollUntil(test, () => getTest(test.id), (t) => t.status !== 'generating', opts)
+	return waitWithEvents(
+		`/tests/${test.id}/events`,
+		test,
+		() => getTest(test.id),
+		(t) => t.status !== 'generating',
+		opts,
+	)
 }
 
 export async function submitTest(
@@ -124,7 +205,8 @@ export async function waitForRecommendation(
 	attempt: AttemptOut,
 	opts?: WaitOpts,
 ): Promise<WaitResult<AttemptOut>> {
-	return pollUntil(
+	return waitWithEvents(
+		`/attempts/${attempt.id}/events`,
 		attempt,
 		() => getAttempt(attempt.id),
 		(a) => a.recommendation_status !== 'pending',
