@@ -43,5 +43,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-# Запускаем только сервер; миграции выполняются отдельным сервисом
-CMD ["/app/.venv/bin/python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Запускаем только сервер; миграции выполняются отдельным сервисом.
+# --timeout-graceful-shutdown: при остановке uvicorn ждёт завершения активных
+# запросов, а SSE-поток (/tests/{id}/events) считается активным до 150 с —
+# без лимита остановка висела бы до SIGKILL от Docker. Через 5 с открытые
+# потоки обрываются; клиенту это не страшно — фронт перейдёт на polling.
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-graceful-shutdown", "5"]
